@@ -69,12 +69,10 @@ function wordRecords=readData(perPerson)
     [windowHeight maxWindowWidth]
     length(wordRecords)
     
-    figure(1); imshow(wordRecords(1).record.orig/max(wordRecords(1).record.orig(:)));
-
     gamma=2;
     
-    frequencies=4;
-    angles=10;
+    frequencies=10;
+    angles=4;
     
     for wordIndex=1:length(wordRecords)        
         
@@ -113,51 +111,3 @@ function wordRecords=readData(perPerson)
         
         wordRecords(wordIndex).record.windowStack=windowStack;
     end
-    
-    size(wordRecords(1).record.windowStack)
-    size(wordRecords(1).record.windowStack(1).windows)
-    fignum=1;
-    for i=1:length(wordRecords(1).record.windowStack)
-        for j=1:length(wordRecords(1).record.windowStack(i).windows)
-            im=wordRecords(1).record.windowStack(i).windows(j).window;
-            fignum=fignum+1;
-            figure(fignum); imshow(im/max(im(:)));
-        end
-    end
-    
-    %{
-    S=zeros(length(f));
-    validate=unique(1+floor(rand(1,ceil(0.1*sampleSize))*length(f)));
-    train=setdiff(1:length(f),validate);
-        
-    for i=validate
-        best=-inf;
-        k=0;
-        for j=train
-            if i~=j
-                s=0;
-                for windowIndex=1:length(gbf(i).windowStack)
-                    
-                    windowListValidate=gbf(i).windowStack(windowIndex).windows;
-                    windowListTrain=gbf(j).windowStack(windowIndex).windows;
-                    
-                    for r=1:length(windowListValidate)
-                        for c=1:length(windowListTrain)
-                            s=s+abs(corr2(windowListValidate(r).window, windowListTrain(c).window));
-                        end
-                    end
-                end
-                if s > best
-                    best=s;
-                    k=j;
-                end
-            end
-        end
-        if k>0
-            guess(i)=f(k).writer;
-        else
-            guess(i)=-1;
-        end
-    end
-    success=100*sum([f(validate).writer]==guess(validate))/length(validate)
-    %}
