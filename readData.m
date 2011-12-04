@@ -1,5 +1,9 @@
 function wordRecords=readData(perPerson)
 
+% read the word data from the image files,
+% taking perPerson number of forms for each writer
+% return a word record structure array
+
 dfile=fopen('data/wordswithwriters.txt', 'r');
 D=textscan(dfile, '%d %s %d %d %s %s');
 fclose(dfile);
@@ -9,7 +13,7 @@ blockSize=14;
 dctMatrix=dctmtx(blockSize);
 
 writers=D{1}';
-forms=D{2};
+forms=D{2}';
 lines=D{3}';
 wordids=D{4}';
 filenames=strcat('data/words/', D{5});
@@ -19,11 +23,11 @@ people=unique(writers);
 gallery=[];
 
 for person=people
-    theirs=find(writers==person);
-    for i=1:perPerson
-        form=forms{theirs(i)};
-        formWords=find(strcmp(forms, form));
-        gallery=[gallery formWords'];
+    theirForms=forms(writers==person);
+    theirForms=theirForms(1:perPerson);
+    for form=theirForms
+        formIndicies=find(strcmp(forms, form));
+        gallery=[gallery formIndicies];
     end
 end
 
@@ -35,9 +39,8 @@ windowHeight=0;
 maxWindowWidth=0;
 
 for s=gallery
-    %try
     originalIm=255-double(imread(filenames{s}, 'png'));
-    originalIm(find(originalIm<100))=0;
+    originalIm(originalIm(:)<100)=0;
     originalIm=originalIm/max(originalIm(:));
     compressedIm=localdct(originalIm, dctMatrix);
     
@@ -56,8 +59,6 @@ for s=gallery
     
     wordRecords(wordIndex).record=wordRecord;
     wordIndex=wordIndex+1;
-    %catch
-    %end
 end
 
 maxWindowWidth=ceil(0.1*maxWindowWidth);
@@ -69,17 +70,32 @@ gamma=2;
 frequencies=10;
 angles=4;
 
-for wordIndex=1:length(wordRecords)
+windowLevel=1; % index into the window stack for this width level
     
-    wordIm=wordRecords(wordIndex).record.im; % the full word image
-    windowStack=struct(); % at each level, the windows are of a different width
-    stackIndex=1; % index into the window stack
+for windowWidth=minWindowWidth:windowWidthIncr:maxWindowWidth % vary the window width
     
-    for windowWidth=minWindowWidth:windowWidthIncr:maxWindowWidth % vary the window width
+    sigma=windowWidth/10; % set up sigma for this window width
+    gaborWindows=struct(); % set up a struct for this level's gabor windows
+    gaborIndex=1;
+    
+    for i=0:angles-1
+        for k=0:frequencies-1
+            
+            % create a gabor filter using the current set of parameters and
+            % save it
+            gaborWindow=gbfilter(windowHeight, windowWidth, i*180/angles, sigma, gamma, sigma/(k+1));
+            gaborWindows(gaborIndex).window=gaborWindow;
+            gaborIndex=gaborIndex+1;
+            
+        end
+    end
+    
+    
+    for wordIndex=1:length(wordRecords) % create windows for each word record
         
-        windowStack(stackIndex).windows=struct(); % initialize the list for this window width
+        wordIm=getField(wordRecords(wordIndex), 'im'); % the full word image
         
-        sigma=windowWidth/10; % set up sigma for this window width
+        windows=struct(); % initialize a window list for this word record        
         
         windowIndex=1; % index into the window list
         
@@ -87,32 +103,35 @@ for wordIndex=1:length(wordRecords)
             
             c=min([column+windowWidth-1 size(wordIm, 2)]); % make sure there is no index error
             
+            wordPiece=wordIm(:, column:c); % get the current piece of the word image
+            
             windowIm=zeros(windowHeight,windowWidth); % initialize an image to store the window
             
-            for i=0:angles-1
-                for k=0:frequencies-1
-                    
-                    % create a gabor filter for the window using the
-                    % current set of parameters
-                    gaborWindow=gbfilter(windowHeight, windowWidth, i*180/angles, sigma, gamma, sigma/(k+1));
-                    
-                    convolutionResult=conv2(gaborWindow, wordIm(:, column:c), 'same');
-                    
-                    % create the window as the superposition of the different convolutions
-                    windowIm=windowIm+convolutionResult;
-                end
+            for gaborIndex=1:length(gaborWindows) % convolve the this portion of the word with the gabor filters
+                
+                gaborWindow=gaborWindows(gaborIndex).window;
+                
+                convolutionResult=conv2(gaborWindow, wordPiece, 'same');
+                
+                % superimpose the convolutions to form the window
+                windowIm=windowIm+convolutionResult;
+                
             end
             
             if max(windowIm(:)) ~= 0 % check that there is something in the window
                 
                 % store and normalize the window
-                windowStack(stackIndex).windows(windowIndex).window=windowIm/max(windowIm(:));
+                windows(windowIndex).window=windowIm/max(windowIm(:));
                 windowIndex=windowIndex+1;
+                
             end
             
         end
-        stackIndex=stackIndex+1;
+        
+        wordRecords(wordIndex).record.windowStack(windowLevel).windows=windows;
+    
     end
     
-    wordRecords(wordIndex).record.windowStack=windowStack;
+    windowLevel=windowLevel+1;
+
 end
