@@ -4,7 +4,9 @@ function wordRecords=readData(perPerson)
     D=textscan(dfile, '%d %s %d %d %s %s');
     fclose(dfile);
     
-    dctMatrix=dctmtx(4);
+    blockSize=14;
+    
+    dctMatrix=dctmtx(blockSize);
     
     writers=D{1}';
     forms=D{2};
