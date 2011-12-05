@@ -13,9 +13,6 @@ widthList2=getField(wordRecord2, 'widthList');
 numWidths=length(widthList1);
 numGabors=length(widthList1(1).level);
 
-figure(1); imshow(getField(wordRecord1, 'orig'));
-figure(2); imshow(getField(wordRecord2, 'orig'));
-
 for widthIndex=1:numWidths
     
     gaborList1=widthList1(widthIndex).level;
