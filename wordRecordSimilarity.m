@@ -1,43 +1,61 @@
-function [ similarity ] = wordRecordSimilarity(wordRecord1, wordRecord2)
+function [ wordSim ] = wordRecordSimilarity(wordRecord1, wordRecord2)
 
-% Compute the similarity of two word records
+% Compute the wordSim of two word records
 % Similarity is computed as an average of
 % cross-correlation results over the window sets of the two word records
 
-similarity=0;
+wordSim=0;
 total=0;
 
-windowStack1=getField(wordRecord1, 'windowStack');
-windowStack2=getField(wordRecord2, 'windowStack');
+widthList1=getField(wordRecord1, 'widthList');
+widthList2=getField(wordRecord2, 'widthList');
 
-stackSize=length(windowStack1);
+numWidths=length(widthList1);
+numGabors=length(widthList1(1).level);
 
-for windowLevel=1:stackSize % go through window width levels
+figure(1); imshow(getField(wordRecord1, 'orig'));
+figure(2); imshow(getField(wordRecord2, 'orig'));
+
+for widthIndex=1:numWidths
     
-    windowList1=windowStack1(windowLevel).windows;
-    windowList2=windowStack2(windowLevel).windows;
+    gaborList1=widthList1(widthIndex).level;
+    gaborList2=widthList2(widthIndex).level;
     
-    for wIndex1=1:length(windowList1) % go through first window list
+    for gaborIndex=1:numGabors
         
-        window1=windowList1(wIndex1).window;
+        windowList1=gaborList1(gaborIndex).windows;
+        windowList2=gaborList2(gaborIndex).windows;
         
-        if max(window1(:)) ~= 0 % avoid divide by zero in corr2
+        for wIndex1=1:length(windowList1)
             
-            for wIndex2=1:length(windowList2) % go through second window list
+            window1=windowList1(wIndex1).window;
+            
+            windowSim=-1;
                 
-                window2=windowList2(wIndex2).window;
+            if max(window1(:)) ~= 0
                 
-                if max(window2(:)) ~= 0 % avoid divide by zero in corr2
+                for wIndex2=1:length(windowList2)
                     
-                    s=abs(corr2(window1, window2));
-                    similarity=similarity+s;
-                    total=total+1;
+                    window2=windowList2(wIndex2).window;
+                    
+                    if max(window2(:)) ~= 0
+                        
+                        windowSim=max([windowSim corr2(window1, window2)]);
+                        
+                    end
                     
                 end
+                
             end
+            
+            if windowSim >= 0
+                wordSim=wordSim+windowSim;
+                total=total+1;
+            end
+
         end
-    end    
+        
+    end
 end
 
-assert(~isnan(similarity));
-if total ~= 0 similarity=similarity/total; end
+if total ~= 0 wordSim=wordSim/total; end

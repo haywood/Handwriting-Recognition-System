@@ -8,7 +8,7 @@ dfile=fopen('data/wordswithwriters.txt', 'r');
 D=textscan(dfile, '%d %s %d %d %s %s');
 fclose(dfile);
 
-blockSize=14;
+blockSize=20;
 
 dctMatrix=dctmtx(blockSize);
 
@@ -23,7 +23,7 @@ people=unique(writers);
 gallery=[];
 
 for person=people
-    theirForms=forms(writers==person);
+    theirForms=unique(forms(writers==person));
     theirForms=theirForms(1:perPerson);
     for form=theirForms
         formIndicies=find(strcmp(forms, form));
@@ -40,7 +40,7 @@ maxWindowWidth=0;
 
 for s=gallery
     originalIm=255-double(imread(filenames{s}, 'png'));
-    originalIm(originalIm(:)<100)=0;
+    %originalIm(originalIm(:)<10)=0;
     originalIm=originalIm/max(originalIm(:));
     compressedIm=localdct(originalIm, dctMatrix);
     
@@ -52,7 +52,7 @@ for s=gallery
     wordRecord.wordid=wordids(s); % store the wordid
     wordRecord.filename=filenames{s}; % store the filename of the image
     wordRecord.word=actualWords{s}; % store the text version of the word
-    wordRecord.windowStack=struct(); % initialize the window stack
+    wordRecord.widthList=struct(); % initialize the window stack
     
     if size(compressedIm, 1)>windowHeight windowHeight=size(compressedIm, 1); end
     if size(compressedIm, 2)>maxWindowWidth maxWindowWidth=size(compressedIm, 2); end
@@ -70,7 +70,7 @@ gamma=2;
 frequencies=10;
 angles=4;
 
-windowLevel=1; % index into the window stack for this width level
+widthIndex=1; % index into the current width level
     
 for windowWidth=minWindowWidth:windowWidthIncr:maxWindowWidth % vary the window width
     
@@ -90,48 +90,37 @@ for windowWidth=minWindowWidth:windowWidthIncr:maxWindowWidth % vary the window 
         end
     end
     
-    
-    for wordIndex=1:length(wordRecords) % create windows for each word record
+    for wordIndex=1:length(wordRecords)
+       
+        wordIm=getField(wordRecords(wordIndex), 'im'); % get compressed word image
+        gaborList=struct(); % setup empty Gabor list
         
-        wordIm=getField(wordRecords(wordIndex), 'im'); % the full word image
-        
-        windows=struct(); % initialize a window list for this word record        
-        
-        windowIndex=1; % index into the window list
-        
-        for column=1:windowWidth:size(wordIm, 2) % move the window through the image
+        for gaborIndex=1:length(gaborWindows)
+           
+            gaborWindow=gaborWindows(gaborIndex).window;
             
-            c=min([column+windowWidth-1 size(wordIm, 2)]); % make sure there is no index error
+            windowIndex=1; % index into the current window number
+            windowList=struct(); % setup empty window list
             
-            wordPiece=wordIm(:, column:c); % get the current piece of the word image
+            for leftEdge=1:windowWidth:size(wordIm, 2)
+                
+                rightEdge=min([leftEdge+windowWidth size(wordIm, 2)]); % find right edge of word image slice
+                wordPiece=wordIm(:,leftEdge:rightEdge); % extract slice of word image
+                windowIm=conv2(gaborWindow, wordPiece, 'same'); % create window by convolving with gabor filter
+                if max(windowIm(:)) ~= 0
+                    windowList(windowIndex).window=windowIm/max(windowIm(:)); % save image window
+                    windowIndex=windowIndex+1; % increment window index
+                end
             
-            windowIm=zeros(windowHeight,windowWidth); % initialize an image to store the window
-            
-            for gaborIndex=1:length(gaborWindows) % convolve the this portion of the word with the gabor filters
-                
-                gaborWindow=gaborWindows(gaborIndex).window;
-                
-                convolutionResult=conv2(gaborWindow, wordPiece, 'same');
-                
-                % superimpose the convolutions to form the window
-                windowIm=windowIm+convolutionResult;
-                
             end
             
-            if max(windowIm(:)) ~= 0 % check that there is something in the window
-                
-                % store and normalize the window
-                windows(windowIndex).window=windowIm/max(windowIm(:));
-                windowIndex=windowIndex+1;
-                
-            end
-            
+            gaborList(gaborIndex).windows=windowList; % save window list
         end
+
+        wordRecords(wordIndex).record.widthList(widthIndex).level=gaborList; % save width level
         
-        wordRecords(wordIndex).record.windowStack(windowLevel).windows=windows;
-    
     end
     
-    windowLevel=windowLevel+1;
-
+    widthIndex=widthIndex+1; % increment width index
+    
 end
