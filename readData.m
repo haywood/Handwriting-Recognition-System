@@ -4,7 +4,7 @@ function wordRecords=readData(perPerson)
 % taking perPerson number of forms for each writer
 % return a word record structure array
 
-if perPerson < 1 | perPerson > 10
+if perPerson < 1 || perPerson > 10
     throw(MException('readData:OutOfRange', 'perPerson must be an integer between 1 and 10.'));
 end
 
@@ -12,7 +12,7 @@ dfile=fopen('data/wordswithwriters.txt', 'r');
 D=textscan(dfile, '%d %s %d %d %s %s');
 fclose(dfile);
 
-blockSize=20;
+blockSize=12;
 
 dctMatrix=dctmtx(blockSize);
 
@@ -48,7 +48,6 @@ for s=gallery
         originalIm=originalIm/max(originalIm(:));
         compressedIm=localdct(originalIm, dctMatrix);
         
-        wordRecord.orig=originalIm; % store original image
         wordRecord.im=compressedIm; % store compressed image
         wordRecord.writer=writers(s); % store the writer id
         wordRecord.form=forms{s}; % store the form id
@@ -73,8 +72,8 @@ windowWidthIncr=ceil(0.1*maxWindowWidth);
 
 gamma=2;
 
-frequencies=10;
-angles=4;
+frequencies=1;
+angles=1;
 
 widthIndex=1; % index into the current width level
 
