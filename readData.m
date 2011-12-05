@@ -4,6 +4,10 @@ function wordRecords=readData(perPerson)
 % taking perPerson number of forms for each writer
 % return a word record structure array
 
+if perPerson < 1 | perPerson > 10
+    throw(MException('readData:OutOfRange', 'perPerson must be an integer between 1 and 10.'));
+end
+
 dfile=fopen('data/wordswithwriters.txt', 'r');
 D=textscan(dfile, '%d %s %d %d %s %s');
 fclose(dfile);
@@ -39,26 +43,28 @@ windowHeight=0;
 maxWindowWidth=0;
 
 for s=gallery
-    originalIm=255-double(imread(filenames{s}, 'png'));
-    %originalIm(originalIm(:)<10)=0;
-    originalIm=originalIm/max(originalIm(:));
-    compressedIm=localdct(originalIm, dctMatrix);
-    
-    wordRecord.orig=originalIm; % store original image
-    wordRecord.im=compressedIm; % store compressed image
-    wordRecord.writer=writers(s); % store the writer id
-    wordRecord.form=forms{s}; % store the form id
-    wordRecord.line=lines(s); % store the line id
-    wordRecord.wordid=wordids(s); % store the wordid
-    wordRecord.filename=filenames{s}; % store the filename of the image
-    wordRecord.word=actualWords{s}; % store the text version of the word
-    wordRecord.widthList=struct(); % initialize the window stack
-    
-    if size(compressedIm, 1)>windowHeight windowHeight=size(compressedIm, 1); end
-    if size(compressedIm, 2)>maxWindowWidth maxWindowWidth=size(compressedIm, 2); end
-    
-    wordRecords(wordIndex).record=wordRecord;
-    wordIndex=wordIndex+1;
+    try
+        originalIm=255-double(imread(filenames{s}, 'png'));
+        originalIm=originalIm/max(originalIm(:));
+        compressedIm=localdct(originalIm, dctMatrix);
+        
+        wordRecord.orig=originalIm; % store original image
+        wordRecord.im=compressedIm; % store compressed image
+        wordRecord.writer=writers(s); % store the writer id
+        wordRecord.form=forms{s}; % store the form id
+        wordRecord.line=lines(s); % store the line id
+        wordRecord.wordid=wordids(s); % store the wordid
+        wordRecord.filename=filenames{s}; % store the filename of the image
+        wordRecord.word=actualWords{s}; % store the text version of the word
+        wordRecord.widthList=struct(); % initialize the window stack
+        
+        if size(compressedIm, 1)>windowHeight windowHeight=size(compressedIm, 1); end
+        if size(compressedIm, 2)>maxWindowWidth maxWindowWidth=size(compressedIm, 2); end
+        
+        wordRecords(wordIndex).record=wordRecord;
+        wordIndex=wordIndex+1;
+    catch
+    end
 end
 
 maxWindowWidth=ceil(0.1*maxWindowWidth);
@@ -71,8 +77,8 @@ frequencies=10;
 angles=4;
 
 widthIndex=1; % index into the current width level
-    
-for windowWidth=minWindowWidth:windowWidthIncr:maxWindowWidth % vary the window width
+
+for windowWidth=maxWindowWidth:windowWidthIncr:maxWindowWidth % vary the window width
     
     sigma=windowWidth/10; % set up sigma for this window width
     gaborWindows=struct(); % set up a struct for this level's gabor windows
@@ -91,12 +97,12 @@ for windowWidth=minWindowWidth:windowWidthIncr:maxWindowWidth % vary the window 
     end
     
     for wordIndex=1:length(wordRecords)
-       
+        
         wordIm=getField(wordRecords(wordIndex), 'im'); % get compressed word image
         gaborList=struct(); % setup empty Gabor list
         
         for gaborIndex=1:length(gaborWindows)
-           
+            
             gaborWindow=gaborWindows(gaborIndex).window;
             
             windowIndex=1; % index into the current window number
@@ -111,12 +117,12 @@ for windowWidth=minWindowWidth:windowWidthIncr:maxWindowWidth % vary the window 
                     windowList(windowIndex).window=windowIm/max(windowIm(:)); % save image window
                     windowIndex=windowIndex+1; % increment window index
                 end
-            
+                
             end
             
             gaborList(gaborIndex).windows=windowList; % save window list
         end
-
+        
         wordRecords(wordIndex).record.widthList(widthIndex).level=gaborList; % save width level
         
     end
