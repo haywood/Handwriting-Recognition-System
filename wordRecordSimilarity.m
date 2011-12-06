@@ -7,52 +7,30 @@ function [ wordSim ] = wordRecordSimilarity(wordRecord1, wordRecord2)
 wordSim=0;
 total=0;
 
-widthList1=getField(wordRecord1, 'widthList');
-widthList2=getField(wordRecord2, 'widthList');
+windowList1=getField(wordRecord1, 'windowList');
+windowList2=getField(wordRecord2, 'windowList');
 
-numWidths=length(widthList1);
-numGabors=length(widthList1(1).level);
 
-for widthIndex=1:numWidths
+for wIndex1=1:length(windowList1)
     
-    gaborList1=widthList1(widthIndex).level;
-    gaborList2=widthList2(widthIndex).level;
+    window1=windowList1(wIndex1).window;
     
-    for gaborIndex=1:numGabors
+    for wIndex2=1:length(windowList2)
+    
+        window2=windowList2(wIndex2).window;
+        windowSim=-1;
+    
+        if max(window1(:)) ~= 0 && max(window2(:)) ~= 0        
+            windowSim=max([windowSim corr2(window1, window2)]);        
+        end
         
-        windowList1=gaborList1(gaborIndex).windows;
-        windowList2=gaborList2(gaborIndex).windows;
-        
-        for wIndex1=1:length(windowList1)
-            
-            window1=windowList1(wIndex1).window;
-            
-            windowSim=-1;
-                
-            if max(window1(:)) ~= 0
-                
-                for wIndex2=1:length(windowList2)
-                    
-                    window2=windowList2(wIndex2).window;
-                    
-                    if max(window2(:)) ~= 0
-                        
-                        windowSim=max([windowSim corr2(window1, window2)]);
-                        
-                    end
-                    
-                end
-                
-            end
-            
-            if windowSim >= 0
-                wordSim=wordSim+windowSim;
-                total=total+1;
-            end
-
+        if windowSim >= 0
+            wordSim=wordSim+windowSim;
+            total=total+1;
         end
         
     end
+    
 end
 
 if total ~= 0 wordSim=wordSim/total; end

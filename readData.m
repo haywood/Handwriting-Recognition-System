@@ -12,9 +12,32 @@ dfile=fopen('data/wordswithwriters.txt', 'r');
 D=textscan(dfile, '%d %s %d %d %s %s');
 fclose(dfile);
 
-blockSize=12;
+blockSize=8; % block size to use for image compression
+dctMatrix=dctmtx(blockSize); % DCT matrix for compression
 
-dctMatrix=dctmtx(blockSize);
+% Create Gabor filters to be used later
+
+filterSize=24; % size of gabor filters
+frequencies=1; % number of frequencies
+angles=1; % number of angles
+
+sigma=filterSize/10; % width of Gaussian
+gamma=2; % ellipsoidicity of Gaussian
+
+gaborIndex=1;
+
+for angle=0:angles-1
+    for freq=1:frequencies
+        
+        % create a gabor filter using the current set of parameters and
+        % save it
+        gaborWindow=gbfilter(filterSize, filterSize, angle*180/angles, sigma, gamma, sigma/freq);
+        gaborWindows(gaborIndex).window=gaborWindow;
+        gaborIndex=gaborIndex+1;
+        
+    end
+end
+
 
 writers=D{1}';
 forms=D{2}';
@@ -39,14 +62,40 @@ wordRecords=struct();
 wordRecord=struct();
 wordIndex=1;
 
-windowHeight=0;
-maxWindowWidth=0;
+windowWidth=10;
 
 for s=gallery
     try
         originalIm=255-double(imread(filenames{s}, 'png'));
         originalIm=originalIm/max(originalIm(:));
         compressedIm=localdct(originalIm, dctMatrix);
+        
+        windowList=struct(); % setup empty Gabor list
+        windowIndex=1; % index into the current window number
+        
+        for gaborIndex=1:length(gaborWindows)
+            
+            gaborWindow=gaborWindows(gaborIndex).window;
+            imWidth=size(compressedIm, 2);
+            
+            if windowWidth >= imWidth
+                windowIm=conv2(gaborWindow, compressedIm, 'same');
+            else
+                for leftEdge=1:windowWidth:imWidth-windowWidth
+                    rightEdge=leftEdge+windowWidth;
+                    
+                    % create window by convolving with gabor filter
+                    windowIm=conv2(gaborWindow, compressedIm(:,leftEdge:rightEdge), 'same');
+                    
+                end
+            end
+            
+            if max(windowIm(:)) ~= 0
+                windowList(windowIndex).window=windowIm/max(windowIm(:)); % save image window
+                windowIndex=windowIndex+1; % increment window index
+            end
+            
+        end
         
         wordRecord.im=compressedIm; % store compressed image
         wordRecord.writer=writers(s); % store the writer id
@@ -55,77 +104,10 @@ for s=gallery
         wordRecord.wordid=wordids(s); % store the wordid
         wordRecord.filename=filenames{s}; % store the filename of the image
         wordRecord.word=actualWords{s}; % store the text version of the word
-        wordRecord.widthList=struct(); % initialize the window stack
-        
-        if size(compressedIm, 1)>windowHeight windowHeight=size(compressedIm, 1); end
-        if size(compressedIm, 2)>maxWindowWidth maxWindowWidth=size(compressedIm, 2); end
+        wordRecord.windowList=windowList; % save windows
         
         wordRecords(wordIndex).record=wordRecord;
         wordIndex=wordIndex+1;
     catch
     end
-end
-
-maxWindowWidth=ceil(0.1*maxWindowWidth);
-minWindowWidth=ceil(0.7*maxWindowWidth);
-windowWidthIncr=ceil(0.1*maxWindowWidth);
-
-gamma=2;
-
-frequencies=1;
-angles=1;
-
-widthIndex=1; % index into the current width level
-
-for windowWidth=maxWindowWidth:windowWidthIncr:maxWindowWidth % vary the window width
-    
-    sigma=windowWidth/10; % set up sigma for this window width
-    gaborWindows=struct(); % set up a struct for this level's gabor windows
-    gaborIndex=1;
-    
-    for i=0:angles-1
-        for k=0:frequencies-1
-            
-            % create a gabor filter using the current set of parameters and
-            % save it
-            gaborWindow=gbfilter(windowHeight, windowWidth, i*180/angles, sigma, gamma, sigma/(k+1));
-            gaborWindows(gaborIndex).window=gaborWindow;
-            gaborIndex=gaborIndex+1;
-            
-        end
-    end
-    
-    for wordIndex=1:length(wordRecords)
-        
-        wordIm=getField(wordRecords(wordIndex), 'im'); % get compressed word image
-        gaborList=struct(); % setup empty Gabor list
-        
-        for gaborIndex=1:length(gaborWindows)
-            
-            gaborWindow=gaborWindows(gaborIndex).window;
-            
-            windowIndex=1; % index into the current window number
-            windowList=struct(); % setup empty window list
-            
-            for leftEdge=1:windowWidth:size(wordIm, 2)
-                
-                rightEdge=min([leftEdge+windowWidth size(wordIm, 2)]); % find right edge of word image slice
-                wordPiece=wordIm(:,leftEdge:rightEdge); % extract slice of word image
-                windowIm=conv2(gaborWindow, wordPiece, 'same'); % create window by convolving with gabor filter
-                if max(windowIm(:)) ~= 0
-                    windowList(windowIndex).window=windowIm/max(windowIm(:)); % save image window
-                    windowIndex=windowIndex+1; % increment window index
-                end
-                
-            end
-            
-            gaborList(gaborIndex).windows=windowList; % save window list
-        end
-        
-        wordRecords(wordIndex).record.widthList(widthIndex).level=gaborList; % save width level
-        
-    end
-    
-    widthIndex=widthIndex+1; % increment width index
-    
 end
