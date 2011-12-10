@@ -20,9 +20,9 @@ sigma=filterSize/10; % width of Gaussian
 gamma=2; % ellipsoidicity of Gaussian
 
 gaborIndex=1;
-
+freqStep=10;
 for angle=0:angles-1
-    for freq=1:frequencies
+    for freq=freqStep:freqStep:freqStep*frequencies
         
         % create a gabor filter using the current set of parameters and
         % save it
@@ -85,14 +85,18 @@ for s=gallery
             windowIndex=1; % index into the current window number
         
             gaborWindow=gaborWindows(gaborIndex).window;
+            
             if windowWidth >= imWidth
+                
                 windowIm=conv2(gaborWindow, compressedIm, 'same');
+                
                 if max(windowIm(:)) ~= 0
-                    windowIm=windowIm/max(windowIm(:));
-                    %windowList(windowIndex).window=windowIm; % save image window
-                    windowList(windowIndex).numerator=windowIm(:);
-                    windowList(windowIndex).denominator=norm(windowIm(:));
+                    windowIm=windowIm(:)/max(windowIm(:));
+                    %windowIm(windowIm < 0.5)=0;
+                    windowList(windowIndex).numerator=windowIm;
+                    windowList(windowIndex).denominator=norm(windowIm);
                 end
+                
             else
                 for leftEdge=1:windowStep:imWidth-windowWidth
                     rightEdge=leftEdge+windowWidth;
@@ -101,10 +105,10 @@ for s=gallery
                     windowIm=conv2(gaborWindow, compressedIm(:,leftEdge:rightEdge), 'same');
                     
                     if max(windowIm(:)) ~= 0
-                        windowIm=windowIm/max(windowIm(:));
-                        %windowList(windowIndex).window=windowIm; % save image window
-                        windowList(windowIndex).numerator=windowIm(:);
-                        windowList(windowIndex).denominator=norm(windowIm(:));
+                        windowIm=windowIm(:)/max(windowIm(:));
+                        %windowIm(windowIm < 0.5)=0;
+                        windowList(windowIndex).numerator=windowIm;
+                        windowList(windowIndex).denominator=norm(windowIm);
                         windowIndex=windowIndex+1; % increment window index
                     end
                     

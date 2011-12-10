@@ -13,33 +13,34 @@ for filterIndex=1:length(filterStack1)
     
     windowList1=filterStack1(filterIndex).windows;
     windowList2=filterStack2(filterIndex).windows;
+    filterSim=[];
     
     for wIndex1=1:length(windowList1)
         
         num1=windowList1(wIndex1).numerator;
-        den1=windowList1(wIndex1).denominator;
-        
+        den1=windowList1(wIndex1).denominator;      
+
         if den1 ~= 0
             
+            windowSim=[];
+
             for wIndex2=1:length(windowList2)
                 
                 num2=windowList2(wIndex2).numerator;
                 den2=windowList2(wIndex2).denominator;
-                windowSim=-1;
-                
                 if den2 ~= 0
-                    windowSim=max([windowSim sum(num1.*num2)/(den1*den2)]);
-                end
-                
-                if windowSim >= 0
-                    simArray=[simArray windowSim];
+                    windowSim=[windowSim sum(num1.*num2)/(den1*den2)];
                 end
                 
             end
             
+            filterSim=[filterSim max(windowSim)];
+
         end
         
     end
+    
+    simArray=[simArray mean(filterSim)];
     
 end
 
