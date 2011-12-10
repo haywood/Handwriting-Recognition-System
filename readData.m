@@ -70,16 +70,22 @@ for s=gallery
         originalIm=originalIm/max(originalIm(:));
         compressedIm=localdct(originalIm, dctMatrix);
         
-        windowList=struct(); % setup empty Gabor list
-        windowIndex=1; % index into the current window number
+        filterStack=struct(); % filter stack for this word
         
         for gaborIndex=1:length(gaborWindows)
             
+            windowList=struct(); % window this for this filter stack level
+            windowIndex=1; % index into the current window number
+        
             gaborWindow=gaborWindows(gaborIndex).window;
             imWidth=size(compressedIm, 2);
             
             if windowWidth >= imWidth
                 windowIm=conv2(gaborWindow, compressedIm, 'same');
+                if max(windowIm(:)) ~= 0
+                    windowList(windowIndex).window=windowIm/max(windowIm(:)); % save image window
+                    windowIndex=windowIndex+1; % increment window index
+                end
             else
                 for leftEdge=1:windowWidth:imWidth-windowWidth
                     rightEdge=leftEdge+windowWidth;
@@ -87,15 +93,17 @@ for s=gallery
                     % create window by convolving with gabor filter
                     windowIm=conv2(gaborWindow, compressedIm(:,leftEdge:rightEdge), 'same');
                     
+                    if max(windowIm(:)) ~= 0
+                        windowList(windowIndex).window=windowIm/max(windowIm(:)); % save image window
+                        windowIndex=windowIndex+1; % increment window index
+                    end
+                    
                 end
-            end
+            end                        
             
-            if max(windowIm(:)) ~= 0
-                windowList(windowIndex).window=windowIm/max(windowIm(:)); % save image window
-                windowIndex=windowIndex+1; % increment window index
-            end
-            
-        end
+            filterStack(gaborIndex).windows=windowList;
+        
+        end        
         
         wordRecord.im=compressedIm; % store compressed image
         wordRecord.writer=writers(s); % store the writer id
@@ -104,7 +112,7 @@ for s=gallery
         wordRecord.wordid=wordids(s); % store the wordid
         wordRecord.filename=filenames{s}; % store the filename of the image
         wordRecord.word=actualWords{s}; % store the text version of the word
-        wordRecord.windowList=windowList; % save windows
+        wordRecord.filterStack=filterStack; % save windows
         
         wordRecords(wordIndex).record=wordRecord;
         wordIndex=wordIndex+1;
