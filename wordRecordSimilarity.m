@@ -16,17 +16,19 @@ for filterIndex=1:length(filterStack1)
     
     for wIndex1=1:length(windowList1)
         
-        window1=windowList1(wIndex1).window;
+        num1=windowList1(wIndex1).numerator;
+        den1=windowList1(wIndex1).denominator;
         
-        if max(window1(:)) ~= 0
+        if den1 ~= 0
             
             for wIndex2=1:length(windowList2)
                 
-                window2=windowList2(wIndex2).window;
+                num2=windowList2(wIndex2).numerator;
+                den2=windowList2(wIndex2).denominator;
                 windowSim=-1;
                 
-                if max(window2(:)) ~= 0
-                    windowSim=max([windowSim corr2(window1, window2)]);
+                if den2 ~= 0
+                    windowSim=max([windowSim sum(num1.*num2)/(den1*den2)]);
                 end
                 
                 if windowSim >= 0

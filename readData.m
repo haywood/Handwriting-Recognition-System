@@ -88,7 +88,10 @@ for s=gallery
             if windowWidth >= imWidth
                 windowIm=conv2(gaborWindow, compressedIm, 'same');
                 if max(windowIm(:)) ~= 0
-                    windowList(windowIndex).window=windowIm/max(windowIm(:)); % save image window
+                    windowIm=windowIm/max(windowIm(:));
+                    %windowList(windowIndex).window=windowIm; % save image window
+                    windowList(windowIndex).numerator=windowIm(:);
+                    windowList(windowIndex).denominator=norm(windowIm(:));
                 end
             else
                 for leftEdge=1:windowStep:imWidth-windowWidth
@@ -98,7 +101,10 @@ for s=gallery
                     windowIm=conv2(gaborWindow, compressedIm(:,leftEdge:rightEdge), 'same');
                     
                     if max(windowIm(:)) ~= 0
-                        windowList(windowIndex).window=windowIm/max(windowIm(:)); % save image window
+                        windowIm=windowIm/max(windowIm(:));
+                        %windowList(windowIndex).window=windowIm; % save image window
+                        windowList(windowIndex).numerator=windowIm(:);
+                        windowList(windowIndex).denominator=norm(windowIm(:));
                         windowIndex=windowIndex+1; % increment window index
                     end
                     
