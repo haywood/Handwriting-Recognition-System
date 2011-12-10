@@ -3,12 +3,13 @@ function [guess,writers]=testFeatures(perPerson)
 %test the features to see how well they discriminate between writers based
 %on single words
 
-words=readData(perPerson, 3, 1, 24, 10, 8);
+words=readData(perPerson, 3, 1, 40, 10, 8);
 
 totalData=1:length(words);
 probe=find(mod(totalData-1, perPerson)==0);
 gallery=setdiff(totalData, probe);
 writerSet=[];
+
 for word=words
     writerSet=[writerSet getField(word, 'writer')];
 end

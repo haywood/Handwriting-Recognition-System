@@ -20,7 +20,7 @@ sigma=filterSize/10; % width of Gaussian
 gamma=2; % ellipsoidicity of Gaussian
 
 gaborIndex=1;
-freqStep=10*sigma;
+freqStep=1;
 
 for angle=0:angles-1
     for freq=freqStep:freqStep:freqStep*frequencies
