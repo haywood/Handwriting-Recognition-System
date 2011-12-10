@@ -3,7 +3,7 @@ function [guess,writers]=testFeatures(perPerson)
 %test the features to see how well they discriminate between writers based
 %on single words
 
-words=readData(perPerson)
+words=readData(perPerson, 3, 1, 24, 10, 8);
 
 totalData=1:length(words);
 probe=find(mod(totalData-1, perPerson)==0);
@@ -12,7 +12,7 @@ gallery=setdiff(totalData, probe);
 guess=zeros(1,length(probe));
 writers=zeros(1,length(guess));
 
-figure(1); imshow(getField(words(4), 'im'));
+figure; imshow(getField(words(4), 'im'));
 
 fprintf('Number of probes: %d\n', length(probe));
 fprintf('Number of gallery: %d\n', length(gallery));

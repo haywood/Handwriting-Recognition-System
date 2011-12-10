@@ -1,4 +1,4 @@
-function wordRecords=readData(perPerson)
+function wordRecords=readData(perPerson, angles, frequencies, filterSize, windowWidth, blockSize)
 
 % read the word data from the image files,
 % taking perPerson number of forms for each writer
@@ -12,14 +12,9 @@ dfile=fopen('data/wordswithwriters.txt', 'r');
 D=textscan(dfile, '%d %s %d %d %s %s');
 fclose(dfile);
 
-blockSize=8; % block size to use for image compression
 dctMatrix=dctmtx(blockSize); % DCT matrix for compression
 
 % Create Gabor filters to be used later
-
-filterSize=24; % size of gabor filters
-frequencies=1; % number of frequencies
-angles=1; % number of angles
 
 sigma=filterSize/10; % width of Gaussian
 gamma=2; % ellipsoidicity of Gaussian
@@ -32,6 +27,7 @@ for angle=0:angles-1
         % create a gabor filter using the current set of parameters and
         % save it
         gaborWindow=gbfilter(filterSize, filterSize, angle*180/angles, sigma, gamma, sigma/freq);
+        figure(gaborIndex); imshow(gaborWindow/max(gaborWindow(:)));
         gaborWindows(gaborIndex).window=gaborWindow;
         gaborIndex=gaborIndex+1;
         
@@ -60,17 +56,28 @@ end
 
 wordRecords=struct();
 wordRecord=struct();
+windowStep=windowWidth;
 wordIndex=1;
 
-windowWidth=10;
-
 for s=gallery
-    try
+    %try
         originalIm=255-double(imread(filenames{s}, 'png'));
         originalIm=originalIm/max(originalIm(:));
         compressedIm=localdct(originalIm, dctMatrix);
         
         filterStack=struct(); % filter stack for this word
+        imWidth=size(compressedIm, 2);
+        zeroCols=[];
+        zeroRun=1;
+        for imColIndex=1:imWidth
+            imCol=compressedIm(:, imColIndex);
+            if ~zeroRun && all(imCol==0) 
+                zeroRun=1;
+            elseif zeroRun
+                zeroCols=[zeroCols imColIndex-1];    
+                zeroRun=0;
+            end
+        end
         
         for gaborIndex=1:length(gaborWindows)
             
@@ -78,16 +85,13 @@ for s=gallery
             windowIndex=1; % index into the current window number
         
             gaborWindow=gaborWindows(gaborIndex).window;
-            imWidth=size(compressedIm, 2);
-            
             if windowWidth >= imWidth
                 windowIm=conv2(gaborWindow, compressedIm, 'same');
                 if max(windowIm(:)) ~= 0
                     windowList(windowIndex).window=windowIm/max(windowIm(:)); % save image window
-                    windowIndex=windowIndex+1; % increment window index
                 end
             else
-                for leftEdge=1:windowWidth:imWidth-windowWidth
+                for leftEdge=1:windowStep:imWidth-windowWidth
                     rightEdge=leftEdge+windowWidth;
                     
                     % create window by convolving with gabor filter
@@ -116,6 +120,6 @@ for s=gallery
         
         wordRecords(wordIndex).record=wordRecord;
         wordIndex=wordIndex+1;
-    catch
-    end
+    %catch
+    %end
 end
