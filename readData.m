@@ -28,7 +28,6 @@ for angle=0:angles-1
         % create a gabor filter using the current set of parameters and
         % save it
         gaborWindow=gbfilter(filterSize, filterSize, angle*180/angles, sigma, gamma, sigma/freq);
-        figure(gaborIndex); imshow(gaborWindow/max(gaborWindow(:)));
         gaborWindows(gaborIndex).window=gaborWindow;
         gaborIndex=gaborIndex+1;
         
