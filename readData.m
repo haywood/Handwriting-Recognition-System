@@ -20,7 +20,8 @@ sigma=filterSize/10; % width of Gaussian
 gamma=2; % ellipsoidicity of Gaussian
 
 gaborIndex=1;
-freqStep=10;
+freqStep=10*sigma;
+
 for angle=0:angles-1
     for freq=freqStep:freqStep:freqStep*frequencies
         
@@ -93,6 +94,7 @@ for s=gallery
                 if max(windowIm(:)) ~= 0
                     windowIm=windowIm(:)/max(windowIm(:));
                     %windowIm(windowIm < 0.5)=0;
+                    %windowIm(windowIm > 0)=1;
                     windowList(windowIndex).numerator=windowIm;
                     windowList(windowIndex).denominator=norm(windowIm);
                 end
@@ -107,6 +109,7 @@ for s=gallery
                     if max(windowIm(:)) ~= 0
                         windowIm=windowIm(:)/max(windowIm(:));
                         %windowIm(windowIm < 0.5)=0;
+                        %windowIm(windowIm > 0)=1;
                         windowList(windowIndex).numerator=windowIm;
                         windowList(windowIndex).denominator=norm(windowIm);
                         windowIndex=windowIndex+1; % increment window index
