@@ -1,4 +1,4 @@
-function [guess,writers]=testFeatures(perPerson, filterSize, blockSize)
+function [guess,writers]=testFeatures(perPerson, perTrain, filterSize, blockSize)
 
 % test the features to see how well they discriminate between writers based
 % on single words
@@ -23,7 +23,22 @@ for i=1:length(formSet)
     formWriters(2, i)=writerList(formIndex(1));
 end
 
-[testWriters,testIndices,testForms]=unique(formWriters(2, :)); % get a single form for each writer for the test set
+testWriters=[];
+testIndices=[];
+
+writerCounts=zeros(1,length(writerSet));
+
+% get first half of each writer's forms as testing data
+for i=1:size(formWriters, 2)
+    writer=formWriters(2,i);
+    writerIndex=find(writerSet==writer);
+    if writerCounts(writerIndex) < perPerson-perTrain
+        testIndices=[testIndices i];
+        testWriters=[testWriters writer];
+        writerCounts(writerIndex)=writerCounts(writerIndex)+1;
+    end
+end
+
 testForms=formSet(testIndices); % record the testing forms
 trainIndices=setdiff(1:length(formSet),testIndices); % record the training forms
 
