@@ -1,4 +1,4 @@
-function [wordRecords]=readData(perPerson, angles, frequencies, filterSize, windowWidth, blockSize)
+function [wordRecords]=readData(perPerson, filterSize, blockSize)
 
 % read the word data from the image files,
 % taking perPerson number of forms for each writer
@@ -13,27 +13,6 @@ D=textscan(dfile, '%d %s %d %d %s %s');
 fclose(dfile);
 
 dctMatrix=dctmtx(blockSize); % DCT matrix for compression
-
-% Create Gabor filters to be used later
-
-sigma=filterSize/10; % width of Gaussian
-gamma=2; % ellipsoidicity of Gaussian
-
-gaborIndex=1;
-freqStep=1;
-
-for angle=0:angles-1
-    for freq=freqStep:freqStep:freqStep*frequencies
-        
-        % create a gabor filter using the current set of parameters and
-        % save it
-        gaborWindow=gbfilter(filterSize, filterSize, angle*180/angles, sigma, gamma, sigma/freq);
-        gaborWindows(gaborIndex).window=gaborWindow;
-        gaborIndex=gaborIndex+1;
-        
-    end
-end
-
 
 writers=D{1}';
 forms=D{2}';
@@ -56,7 +35,6 @@ end
 
 wordRecords=struct();
 wordRecord=struct();
-windowStep=windowWidth;
 wordIndex=1;
 
 for s=gallery
@@ -65,73 +43,30 @@ for s=gallery
         originalIm=originalIm/max(originalIm(:));
         compressedIm=localdct(originalIm, dctMatrix);
         
-        filterStack=struct(); % filter stack for this word
+        imHeight=size(compressedIm, 1);
         imWidth=size(compressedIm, 2);
-        %windowWidth=imWidth;
 
-        for gaborIndex=1:length(gaborWindows)
-            
-            windowList=struct(); % window this for this filter stack level
-            windowIndex=1; % index into the current window number
-        
-            gaborWindow=gaborWindows(gaborIndex).window;
-            
-            if windowWidth >= imWidth
-                
-                fftHeight=max(size(compressedIm, 1), filterSize);
-                fftWidth=max(size(compressedIm, 2), filterSize);
-                windowIm=conv2(gaborWindow, compressedIm, 'same'); %dct2(compressedIm, fftHeight, fftWidth);
-                windowIm=windowIm(1:filterSize,1:filterSize);
-                
-                windowIm=windowIm(:)/max(abs(windowIm(:)));
-                windowIm=mean(windowIm, 2);
-                windowList(windowIndex).numerator=windowIm;
+        fftHeight=max(imHeight, filterSize);
+        fftWidth=max(imWidth, filterSize);
 
-                if max(windowIm(:)) ~= 0
-                    windowList(windowIndex).denominator=norm(windowIm);
-                else
-                    windowList(windowIndex).denominator=1;
-                end
-                
-            else
-                for leftEdge=1:windowStep:imWidth-windowWidth
-                    rightEdge=leftEdge+windowWidth;
-                    
-                    fftHeight=max(size(compressedIm, 1), filterSize);
-                    fftWidth=max(windowWidth, filterSize);
-                    windowIm=conv2(gaborWindow, compressedIm, 'same'); %dct2(compressedIm, fftHeight, fftWidth);
+        windowIm=dct2(compressedIm, fftHeight, fftWidth);
+        windowIm=windowIm(1:filterSize,1:filterSize); % truncate the transform since high frequency content is unimportant
 
-                    if max(abs(windowIm(:))) ~= 0
-                        windowIm=windowIm(1:filterSize,1:filterSize);
+        windowIm=windowIm(:)/max(abs(windowIm(:)));
 
-                        windowIm=windowIm(:)/max(windowIm(:));
-                        windowIm=mean(windowIm, 2);
-                        windowList(windowIndex).numerator=windowIm;
-
-                        if max(abs(windowIm(:))) ~= 0
-                            windowList(windowIndex).denominator=norm(windowIm);
-                        else
-                            windowList(windowIndex).denominator=1;
-                        end
-                    end
-
-                    windowIndex=windowIndex+1; % increment window index
-                    
-                end
-            end                        
-            
-            filterStack(gaborIndex).windows=windowList;
-        
-        end        
-        
-        wordRecord.im=compressedIm; % store compressed image
+        wordRecord.im=originalIm; % store original image
+        wordRecord.numerator=windowIm; % store window
+        if max(windowIm(:)) ~= 0
+            wordRecord.denominator=norm(windowIm);
+        else
+            wordRecord.denominator=1;
+        end
         wordRecord.writer=writers(s); % store the writer id
         wordRecord.form=forms{s}; % store the form id
         wordRecord.line=lines(s); % store the line id
         wordRecord.wordid=wordids(s); % store the wordid
         wordRecord.filename=filenames{s}; % store the filename of the image
         wordRecord.word=actualWords{s}; % store the text version of the word
-        wordRecord.filterStack=filterStack; % save windows
         
         wordRecords(wordIndex).record=wordRecord;
         wordIndex=wordIndex+1;
