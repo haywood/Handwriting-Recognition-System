@@ -78,27 +78,44 @@ for s=gallery
             
             if windowWidth >= imWidth
                 
-                windowIm=conv2(gaborWindow, compressedIm, 'same');
+                fftHeight=max(size(compressedIm, 1), filterSize);
+                fftWidth=max(size(compressedIm, 2), filterSize);
+                windowIm=conv2(gaborWindow, compressedIm, 'same'); %dct2(compressedIm, fftHeight, fftWidth);
+                windowIm=windowIm(1:filterSize,1:filterSize);
                 
+                windowIm=windowIm(:)/max(abs(windowIm(:)));
+                windowIm=mean(windowIm, 2);
+                windowList(windowIndex).numerator=windowIm;
+
                 if max(windowIm(:)) ~= 0
-                    windowIm=windowIm(:)/max(windowIm(:));
-                    windowList(windowIndex).numerator=windowIm;
                     windowList(windowIndex).denominator=norm(windowIm);
+                else
+                    windowList(windowIndex).denominator=1;
                 end
                 
             else
                 for leftEdge=1:windowStep:imWidth-windowWidth
                     rightEdge=leftEdge+windowWidth;
                     
-                    % create window by convolving with gabor filter
-                    windowIm=conv2(gaborWindow, compressedIm(:,leftEdge:rightEdge), 'same');
-                    
-                    if max(windowIm(:)) ~= 0
+                    fftHeight=max(size(compressedIm, 1), filterSize);
+                    fftWidth=max(windowWidth, filterSize);
+                    windowIm=conv2(gaborWindow, compressedIm, 'same'); %dct2(compressedIm, fftHeight, fftWidth);
+
+                    if max(abs(windowIm(:))) ~= 0
+                        windowIm=windowIm(1:filterSize,1:filterSize);
+
                         windowIm=windowIm(:)/max(windowIm(:));
+                        windowIm=mean(windowIm, 2);
                         windowList(windowIndex).numerator=windowIm;
-                        windowList(windowIndex).denominator=norm(windowIm);
-                        windowIndex=windowIndex+1; % increment window index
+
+                        if max(abs(windowIm(:))) ~= 0
+                            windowList(windowIndex).denominator=norm(windowIm);
+                        else
+                            windowList(windowIndex).denominator=1;
+                        end
                     end
+
+                    windowIndex=windowIndex+1; % increment window index
                     
                 end
             end                        

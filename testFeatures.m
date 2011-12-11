@@ -1,7 +1,7 @@
 function [guess,writers]=testFeatures(perPerson)
 
-%test the features to see how well they discriminate between writers based
-%on single words
+% test the features to see how well they discriminate between writers based
+% on single words
 
 words=readData(perPerson, 1, 1, 20, 10, 8);
 
@@ -97,6 +97,8 @@ for i=1:length(probe)
     fprintf('Test %d, %f%% correct %d => %d with similarity %f\n', i, 100*sum(guess(1:i)==writers(1:i))/i, writers(i), guess(i), s);
 end
 
+testGuess=zeros(1, length(testWriters));
+
 for i=1:size(formToWriter, 3)
 
     % average form to writer similarity
@@ -104,11 +106,13 @@ for i=1:size(formToWriter, 3)
     formToWriter(1, :, i)=formToWriter(1, :, i)./formToWriter(2, :, i);
 
     % record maximally similar writer
-    [s,formWriters(1,i)]=max(formToWriter(1, :, i));
-    s
+    [s,k]=max(formToWriter(1, :, i));
+    testGuess(1,i)=writerSet(k);
+
 end
 
-formWriters(:,testIndices)
-formToWriter
+testGuess
+testWriters
+sum(testGuess==testWriters)/length(testGuess)
 
 fprintf('Percent correct: %f\n', 100*sum(guess==writers)/length(guess));
