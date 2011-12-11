@@ -38,7 +38,7 @@ wordRecord=struct();
 wordIndex=1;
 
 for s=gallery
-    %try
+    try
         originalIm=255-double(imread(filenames{s}, 'png'));
         originalIm=originalIm/max(originalIm(:));
         compressedIm=localdct(originalIm, dctMatrix);
@@ -70,6 +70,6 @@ for s=gallery
         
         wordRecords(wordIndex).record=wordRecord;
         wordIndex=wordIndex+1;
-    %catch
-    %end
+    catch
+    end
 end
