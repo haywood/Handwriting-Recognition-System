@@ -1,4 +1,4 @@
-function wordRecords=readData(perPerson, angles, frequencies, filterSize, windowWidth, blockSize)
+function [wordRecords]=readData(perPerson, angles, frequencies, filterSize, windowWidth, blockSize)
 
 % read the word data from the image files,
 % taking perPerson number of forms for each writer
@@ -67,18 +67,8 @@ for s=gallery
         
         filterStack=struct(); % filter stack for this word
         imWidth=size(compressedIm, 2);
-        zeroCols=[];
-        zeroRun=1;
-        for imColIndex=1:imWidth
-            imCol=compressedIm(:, imColIndex);
-            if ~zeroRun && all(imCol==0) 
-                zeroRun=1;
-            elseif zeroRun
-                zeroCols=[zeroCols imColIndex-1];    
-                zeroRun=0;
-            end
-        end
-        
+        %windowWidth=imWidth;
+
         for gaborIndex=1:length(gaborWindows)
             
             windowList=struct(); % window this for this filter stack level
@@ -92,8 +82,6 @@ for s=gallery
                 
                 if max(windowIm(:)) ~= 0
                     windowIm=windowIm(:)/max(windowIm(:));
-                    %windowIm(windowIm < 0.5)=0;
-                    %windowIm(windowIm > 0)=1;
                     windowList(windowIndex).numerator=windowIm;
                     windowList(windowIndex).denominator=norm(windowIm);
                 end
@@ -107,8 +95,6 @@ for s=gallery
                     
                     if max(windowIm(:)) ~= 0
                         windowIm=windowIm(:)/max(windowIm(:));
-                        %windowIm(windowIm < 0.5)=0;
-                        %windowIm(windowIm > 0)=1;
                         windowList(windowIndex).numerator=windowIm;
                         windowList(windowIndex).denominator=norm(windowIm);
                         windowIndex=windowIndex+1; % increment window index

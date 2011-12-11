@@ -3,18 +3,45 @@ function [guess,writers]=testFeatures(perPerson)
 %test the features to see how well they discriminate between writers based
 %on single words
 
-words=readData(perPerson, 3, 1, 20, 10, 8);
+words=readData(perPerson, 1, 1, 20, 10, 8);
 
 totalData=1:length(words);
-probe=find(mod(totalData-1, perPerson)==0);
-gallery=setdiff(totalData, probe);
-writerSet=[];
+
+writerList=[];
+formList={};
 
 for word=words
-    writerSet=[writerSet getField(word, 'writer')];
+    writerList=[writerList getField(word, 'writer')];
+    formList{end+1}=getField(word, 'form');
 end
-writerSet=unique(writerSet);
 
+% get unique lists of writers and forms
+writerSet=unique(writerList);
+formSet=unique(formList);
+
+formWriters=zeros(2,length(formSet)); % track who wrote each form in formSet
+for i=1:length(formSet)
+    formIndex=find(strcmp(formList, formSet{i}));
+    formWriters(2, i)=writerList(formIndex(1));
+end
+
+[testWriters,testIndices,testForms]=unique(formWriters(2, :)); % get a single form for each writer for the test set
+testForms=formSet(testIndices); % record the testing forms
+trainIndices=setdiff(1:length(formSet),testIndices); % record the training forms
+
+% split words up into probe and gallery by index
+gallery=[];
+probe=[];
+for i=totalData
+    form=formList{i};
+    if any(strcmp(testForms, form))
+        probe=[probe i];
+    else
+        gallery=[gallery i];
+    end
+end
+
+% set up guess and correct
 guess=zeros(1,length(probe));
 writers=zeros(1,length(guess));
 
@@ -23,10 +50,23 @@ fprintf('Number of gallery: %d\n', length(gallery));
 
 assert(isempty(intersect(probe,gallery)));
 
+i=1;
+for word=words
+    wordWriter=getField(word, 'writer');
+    if find(writerSet==wordWriter)==i
+        wordIm=getField(word, 'im');
+        figure(i); imshow(wordIm/max(wordIm(:)));
+        i=i+1;
+        if i > length(writerSet) break; end
+    end
+end
+
+formToWriter=zeros(2, length(writerSet), length(testForms));
+
 for i=1:length(probe)
 
     testWord=words(probe(i));
-    writerSim=zeros(2,length(writerSet));
+    writerSim=zeros(1,length(writerSet));
     
     for j=gallery
         
@@ -37,17 +77,38 @@ for i=1:length(probe)
         trainWriter=getField(trainWord, 'writer');        
         writerIndex=find(writerSet == trainWriter);
         
-        writerSim(1, writerIndex)=writerSim(1, writerIndex)+s;
-        writerSim(2, writerIndex)=writerSim(2,writerIndex)+1;
+        writerSim(writerIndex)=max(writerSim(writerIndex), s);
 
     end
     
-    writerSim=writerSim(1,:)./writerSim(2,:);
     [s, guessi]=max(writerSim);
+
+    % get current test form
+    form=getField(testWord, 'form');
+    formIndex=find(strcmp(testForms, form));
+
+    % update form to writer similarity
+    formToWriter(1, guessi, formIndex)=formToWriter(1, guessi, formIndex)+s;
+    formToWriter(2, guessi, formIndex)=formToWriter(2, guessi, formIndex)+1;
+
     guess(i)=writerSet(guessi);
     writers(i)=getField(testWord, 'writer');
     
     fprintf('Test %d, %f%% correct %d => %d with similarity %f\n', i, 100*sum(guess(1:i)==writers(1:i))/i, writers(i), guess(i), s);
 end
+
+for i=1:size(formToWriter, 3)
+
+    % average form to writer similarity
+    formToWriter(2, formToWriter(2, :, i)==0, i)=1;
+    formToWriter(1, :, i)=formToWriter(1, :, i)./formToWriter(2, :, i);
+
+    % record maximally similar writer
+    [s,formWriters(1,i)]=max(formToWriter(1, :, i));
+    s
+end
+
+formWriters(:,testIndices)
+formToWriter
 
 fprintf('Percent correct: %f\n', 100*sum(guess==writers)/length(guess));

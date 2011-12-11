@@ -1,4 +1,4 @@
-function [ wordSim ] = wordRecordSimilarity(wordRecord1, wordRecord2)
+function [wordSim] = wordRecordSimilarity(wordRecord1, wordRecord2)
 
 % Compute the wordSim of two word records
 % Similarity is computed as an average of
