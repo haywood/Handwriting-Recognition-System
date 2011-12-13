@@ -1,4 +1,4 @@
-function [guess,writers]=testFeatures(perPerson, perTrain, filterSize, blockSize)
+function [guess,writers]=testFeatures(perPerson, filterSize, blockSize)
 
 % test the features to see how well they discriminate between writers based
 % on single words
@@ -23,24 +23,9 @@ for i=1:length(formSet)
     formWriters(2, i)=writerList(formIndex(1));
 end
 
-testWriters=[];
-testIndices=[];
-
-writerCounts=zeros(1,length(writerSet));
-
-% get first half of each writer's forms as testing data
-for i=1:size(formWriters, 2)
-    writer=formWriters(2,i);
-    writerIndex=find(writerSet==writer);
-    if writerCounts(writerIndex) < perPerson-perTrain
-        testIndices=[testIndices i];
-        testWriters=[testWriters writer];
-        writerCounts(writerIndex)=writerCounts(writerIndex)+1;
-    end
-end
-
+% get first of each writer's forms as testing data
+[testWriters,testIndices,testForms]=unique(formWriters(2,:));
 testForms=formSet(testIndices); % record the testing forms
-trainIndices=setdiff(1:length(formSet),testIndices); % record the training forms
 
 % split words up into probe and gallery by index
 gallery=[];
@@ -83,34 +68,35 @@ formToWriter=zeros(length(testForms), length(writerSet));
 for i=1:length(probe)
 
     testWord=words(probe(i));
-    writerSim=zeros(1,length(writerSet));
+    maxIndex=0;
+    maxSim=-inf;
     
     for j=gallery
         
         trainWord=words(j);
         
-        s=wordRecordSimilarity(testWord, trainWord);
+        writerSim=wordRecordSimilarity(testWord, trainWord);
         
-        trainWriter=getField(trainWord, 'writer');        
-        writerIndex=find(writerSet == trainWriter);
-        
-        writerSim(writerIndex)=max(writerSim(writerIndex), s);
+        if writerSim >= maxSim
+            trainWriter=getField(trainWord, 'writer');        
+            writerIndex=find(writerSet == trainWriter);
+            maxIndex=writerIndex;
+            maxSim=writerSim;
+        end
 
     end
     
-    [s, guessi]=max(writerSim);
-
     % get current test form
     form=getField(testWord, 'form');
     formIndex=find(strcmp(testForms, form));
 
     % update form to writer similarity
-    formToWriter(formIndex, guessi)=formToWriter(formIndex, guessi)+1;
+    formToWriter(formIndex, maxIndex)=formToWriter(formIndex, maxIndex)+1;
 
-    guess(i)=writerSet(guessi);
+    guess(i)=writerSet(maxIndex);
     writers(i)=getField(testWord, 'writer');
     
-    fprintf('Test %d, %f%% correct %d => %d with similarity %f\n', i, 100*sum(guess(1:i)==writers(1:i))/i, writers(i), guess(i), s);
+    fprintf('Test %d, %f%% correct %d => %d with similarity %f\n', i, 100*sum(guess(1:i)==writers(1:i))/i, writers(i), guess(i), maxSim);
 end
 
 % record maximally similar writers
@@ -121,7 +107,7 @@ formToWriter
 testGuess
 testWriters
 
-formAcc=100*sum(testGuess==testWriters)/length(testGuess)
+formAcc=100*sum(testGuess==testWriters)/length(testGuess);
 wordAcc=100*sum(guess==writers)/length(guess);
 
 fprintf('Percent forms correct: %f\n', formAcc);
