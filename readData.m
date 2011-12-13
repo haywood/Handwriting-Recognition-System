@@ -41,23 +41,17 @@ for s=gallery
     try
         originalIm=255-double(imread(filenames{s}, 'png'));
         originalIm=originalIm/max(originalIm(:));
-        compressedIm=localdct(originalIm, dctMatrix);
+        %compressedIm=localdct(originalIm, dctMatrix);
         
-        imHeight=size(compressedIm, 1);
-        imWidth=size(compressedIm, 2);
+        compressedIm=imresize(originalIm, [filterSize, filterSize]);
 
-        fftHeight=max(imHeight, filterSize);
-        fftWidth=max(imWidth, filterSize);
-
-        windowIm=dct2(compressedIm, fftHeight, fftWidth);
-        windowIm=windowIm(1:filterSize,1:filterSize); % truncate the transform since high frequency content is unimportant
-
-        windowIm=windowIm(:)/max(abs(windowIm(:)));
+        windowIm=dct2(compressedIm);
+        windowIm=windowIm/max(abs(windowIm(:)));
 
         wordRecord.im=originalIm; % store original image
         wordRecord.numerator=windowIm; % store window
         if max(windowIm(:)) ~= 0
-            wordRecord.denominator=norm(windowIm);
+            wordRecord.denominator=norm(windowIm(:));
         else
             wordRecord.denominator=1;
         end

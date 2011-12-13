@@ -9,4 +9,4 @@ num2=getField(wordRecord2, 'numerator');
 den1=getField(wordRecord1, 'denominator');
 den2=getField(wordRecord2, 'denominator');
 
-wordSim=sum(num1.*num2)/(den1*den2);
+wordSim=sum(num1(:).*num2(:))/(den1*den2);

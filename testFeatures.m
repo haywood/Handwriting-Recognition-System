@@ -68,7 +68,10 @@ for word=words
     wordWriter=getField(word, 'writer');
     if find(writerSet==wordWriter)==i
         wordIm=getField(word, 'im');
-        figure(i); imshow(wordIm/max(wordIm(:)));
+        wordIm=imresize(wordIm, [100 100]);
+        wordIm=wordIm/max(wordIm(:));
+        wordIm=dct2(wordIm);
+        figure(i); imshow(wordIm);
         i=i+1;
         if i > length(writerSet) break; end
     end
