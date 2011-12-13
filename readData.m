@@ -37,6 +37,7 @@ wordRecords=struct();
 wordRecord=struct();
 wordIndex=1;
 
+length(gallery)
 for s=gallery
     try
         originalIm=255-double(imread(filenames{s}, 'png'));
