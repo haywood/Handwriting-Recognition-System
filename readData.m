@@ -43,15 +43,16 @@ for s=gallery
         originalIm=originalIm/max(originalIm(:));
         compressedIm=localdct(originalIm, dctMatrix);
 
-        dctHeight=max(filterSize, size(compressedIm, 1));
-        dctWidth=max(filterSize, size(compressedIm, 2));
+        dctHeight=max(filterSize, size(compressedIm, 1)); % height to use for DCT
+        dctWidth=max(filterSize, size(compressedIm, 2)); % width to use for DCT
         
-        windowIm=dct2(compressedIm, dctHeight, dctWidth);
-        windowIm=windowIm(1:filterSize, 1:filterSize);
-        windowIm=windowIm/max(abs(windowIm(:)));
+        windowIm=dct2(compressedIm, dctHeight, dctWidth); % 2-D discrete cosine transform
+        windowIm=windowIm/max(abs(windowIm(:))); % normalize
+
+        windowIm=windowIm(1:filterSize, 1:filterSize); % throw out high frequency content if there is any
 
         wordRecord.im=originalIm; % store original image
-        wordRecord.numerator=abs(windowIm); % store window
+        wordRecord.numerator=windowIm; % store window
         if max(windowIm(:)) ~= 0
             wordRecord.denominator=norm(windowIm(:));
         else

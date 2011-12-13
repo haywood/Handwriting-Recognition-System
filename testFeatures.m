@@ -117,6 +117,7 @@ end
 [s,k]=max(formToWriter, [], 2);
 testGuess=writerSet(k);
 
+formToWriter
 testGuess
 testWriters
 
