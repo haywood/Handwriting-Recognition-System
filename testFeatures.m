@@ -77,7 +77,7 @@ for i=1:length(probe)
         
         writerSim=wordRecordSimilarity(testWord, trainWord);
         
-        if writerSim >= maxSim
+        if writerSim > maxSim
             trainWriter=getField(trainWord, 'writer');        
             writerIndex=find(writerSet == trainWriter);
             maxIndex=writerIndex;
