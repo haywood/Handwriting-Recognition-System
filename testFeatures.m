@@ -1,4 +1,4 @@
-function [guess,writers]=testFeatures(perPerson, filterSize, blockSize)
+function testFeatures(perPerson, filterSize, blockSize)
 
 % test the features to see how well they discriminate between writers based
 % on single words
@@ -49,20 +49,6 @@ fprintf('Number of gallery: %d\n', length(gallery));
 
 assert(isempty(intersect(probe,gallery)));
 
-i=1;
-for word=words
-    wordWriter=getField(word, 'writer');
-    if find(writerSet==wordWriter)==i
-        wordIm=getField(word, 'im');
-        wordIm=imresize(wordIm, [100 100]);
-        wordIm=wordIm/max(wordIm(:));
-        wordIm=dct2(wordIm);
-        figure(i); imshow(wordIm);
-        i=i+1;
-        if i > length(writerSet) break; end
-    end
-end
-
 formToWriter=zeros(length(testForms), length(writerSet));
 
 for i=1:length(probe)
@@ -102,10 +88,6 @@ end
 % record maximally similar writers
 [s,k]=max(formToWriter, [], 2);
 testGuess=writerSet(k);
-
-formToWriter
-testGuess
-testWriters
 
 formAcc=100*sum(testGuess==testWriters)/length(testGuess);
 wordAcc=100*sum(guess==writers)/length(guess);
