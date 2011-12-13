@@ -51,7 +51,7 @@ for s=gallery
         windowIm=windowIm/max(abs(windowIm(:)));
 
         wordRecord.im=originalIm; % store original image
-        wordRecord.numerator=windowIm; % store window
+        wordRecord.numerator=abs(windowIm); % store window
         if max(windowIm(:)) ~= 0
             wordRecord.denominator=norm(windowIm(:));
         else
