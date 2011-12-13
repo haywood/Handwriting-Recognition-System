@@ -41,11 +41,13 @@ for s=gallery
     try
         originalIm=255-double(imread(filenames{s}, 'png'));
         originalIm=originalIm/max(originalIm(:));
-        %compressedIm=localdct(originalIm, dctMatrix);
-        
-        compressedIm=imresize(originalIm, [filterSize, filterSize]);
+        compressedIm=localdct(originalIm, dctMatrix);
 
-        windowIm=dct2(compressedIm);
+        dctHeight=max(filterSize, size(compressedIm, 1));
+        dctWidth=max(filterSize, size(compressedIm, 2));
+        
+        windowIm=dct2(compressedIm, dctHeight, dctWidth);
+        windowIm=windowIm(1:filterSize, 1:filterSize);
         windowIm=windowIm/max(abs(windowIm(:)));
 
         wordRecord.im=originalIm; % store original image

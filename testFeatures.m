@@ -58,6 +58,7 @@ end
 guess=zeros(1,length(probe));
 writers=zeros(1,length(guess));
 
+fprintf('Total number of words: %d\n', length(words));
 fprintf('Number of probes: %d\n', length(probe));
 fprintf('Number of gallery: %d\n', length(gallery));
 
@@ -118,6 +119,9 @@ testGuess=writerSet(k);
 
 testGuess
 testWriters
-100*sum(testGuess==testWriters)/length(testGuess)
 
-fprintf('Percent correct: %f\n', 100*sum(guess==writers)/length(guess));
+formAcc=100*sum(testGuess==testWriters)/length(testGuess)
+wordAcc=100*sum(guess==writers)/length(guess);
+
+fprintf('Percent forms correct: %f\n', formAcc);
+fprintf('Percent words correct: %f\n', wordAcc);
