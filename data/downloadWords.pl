@@ -21,4 +21,4 @@ while (<INDEX>) {
 close URLS;
 close INDEX;
 
-`wget --http-user=mhr2126 --http-passwd=eureka7 -x -nH --cut-dirs=3 -i $wordurls`;
+`wget --http-user=mhr2126 --http-passwd=eureka7 -x -nc -nH --cut-dirs=3 -i $wordurls`;
