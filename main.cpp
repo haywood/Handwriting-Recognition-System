@@ -35,6 +35,7 @@ int main(int argc, char **argv)
 
     int transformRows, transformCols;
     int lineNum, wordNum;
+    int wordCount=0;
 
     if (transformScale <= 0 || transformScale > TRANS_MAX) {
         cerr << "error: illegal value for transformScale: " << transformScale
@@ -72,7 +73,7 @@ int main(int argc, char **argv)
     map <WriterId, list<FormId> > writerSet;
     map <WriterId, int> formCounts;
     map <FormId, WriterId> formSet;
-    list<Word> words;
+    map <FormId, Mat_<float> > formFeatures;
 
     if (!indexFile.good()) {
         cerr << " error opening file: " << indexFilename << "\n";
@@ -114,8 +115,7 @@ int main(int argc, char **argv)
 
                 // create Word struct and save it
                 Word record(imFilename, text, features.clone(), writer, form, lineNum, wordNum);
-                words.push_back(record);
-
+                wordCount++;
                 // record new writer
                 if (!writerSet.count(writer)) writerSet[writer];
 
@@ -124,22 +124,27 @@ int main(int argc, char **argv)
                     if (formCounts[writer] < testCount) {
                         testData[form];
                     }
+                    formFeatures[form]=features.clone();
                     writerSet[writer].push_back(form);
                     formSet[form]=writer;
                     formCounts[writer]++;
-                } 
+                } else {
+                    formFeatures[form]+=features;
+                }
                 
                 // split into training and testing data
                 if (testData.count(form)) {
-                    testData[form].push_back(words.back());
+                    testData[form].push_back(record);
                 } else {
-                    trainData[form].push_back(words.back());
+                    trainData[form].push_back(record);
                 }
             }
         }
     }
 
-    cout << "Read in " << words.size() << " words\n";
+    map<FormId, Mat_<float> >::iterator formIt=formFeatures.begin();
+
+    cout << "Read in " << wordCount << " words\n";
 
     map<FormId, list<Word> >::iterator trainForm;
     map<FormId, list<Word> >::iterator testForm;
@@ -205,8 +210,10 @@ int main(int argc, char **argv)
                     maxVotes=votes[guess];
                     bestGuess=guess;
                 }
-                testWord++;
             }
+
+            testWord++;
+
         }
 
         if (bestGuess == writer) correctForm++;
