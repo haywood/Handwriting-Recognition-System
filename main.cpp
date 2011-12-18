@@ -8,6 +8,8 @@
 
 #include "HWRecognition.h"
 
+#define TRANS_MAX 100
+
 using namespace std;
 using namespace cv;
 
@@ -15,8 +17,8 @@ size_t getOptimalDCTSize(size_t N) { return 2*getOptimalDFTSize((N+1)/2); }
 
 int main(int argc, char **argv)
 {
-    if (argc != 7) {
-        cerr << "usage: " << argv[0] << " <dataDir> <transformScale> <featureHeight> <featureWidth> <perWriter> <testCount>\n";
+    if (argc != 8) {
+        cerr << "usage: " << argv[0] << " <dataDir> <transformScale> <featureHeight> <featureWidth> <perWriter> <testCount> <epsilonMin>\n";
         return 0;
     }
 
@@ -24,12 +26,39 @@ int main(int argc, char **argv)
     string indexFilename=dataDir+"/wordswithwriters.txt"; 
     string imFilename, text;
 
-    int transformScale=atoi(argv[2]);
-    int featureHeight=atoi(argv[3]), featureWidth=atoi(argv[4]);
-    int perWriter=atoi(argv[5]);
-    int testCount=atoi(argv[6]);
+    int transformScale=strtol(argv[2], NULL, 10);
+    int featureHeight=strtol(argv[3], NULL, 10); 
+    int featureWidth=strtol(argv[4], NULL, 10);
+    int perWriter=strtol(argv[5], NULL, 10);
+    int testCount=strtol(argv[6], NULL, 10);
+    float epsilonMin=strtof(argv[7], NULL);
+
     int transformRows, transformCols;
     int lineNum, wordNum;
+
+    if (transformScale <= 0 || transformScale > TRANS_MAX) {
+        cerr << "error: illegal value for transformScale: " << transformScale
+            << ". Should be 0 <= transformScale < " << TRANS_MAX << "\n";
+        return 1;
+    }
+
+    if (perWriter < 2) {
+        cerr << "error: illagal value for perWriter: " << perWriter
+            << ". Must use at least two writing samples per person.\n";
+        return 1;
+    }
+
+    if (testCount < 1 || testCount >= perWriter) {
+        cerr << "error: illegal value for testCount: " << testCount
+            << ". Must us at least one and no more than perWriter\n";
+        return 1;
+    }
+
+    if (isnan(epsilonMin) || epsilonMin < 0 || epsilonMin > 1) {
+        cerr << "error: illegal value for epsilonMin: " << epsilonMin 
+            << ". Should be 0 <= epsilonMin <= 1.\n";
+        return 1;
+    }
 
     Mat img, padded, transform, features;
     ifstream indexFile(indexFilename.c_str());
@@ -38,8 +67,8 @@ int main(int argc, char **argv)
     WriterId writer;
     FormId form;
 
-    map <WriterId, list<Word *> > trainData;
-    map <FormId, list<Word *> >  testData;
+    map <FormId, list<Word> > trainData;
+    map <FormId, list<Word> >  testData;
     map <WriterId, list<FormId> > writerSet;
     map <WriterId, int> formCounts;
     map <FormId, WriterId> formSet;
@@ -102,9 +131,9 @@ int main(int argc, char **argv)
                 
                 // split into training and testing data
                 if (testData.count(form)) {
-                    testData[form].push_back(&words.back());
+                    testData[form].push_back(words.back());
                 } else {
-                    trainData[writer].push_back(&words.back());
+                    trainData[form].push_back(words.back());
                 }
             }
         }
@@ -112,10 +141,10 @@ int main(int argc, char **argv)
 
     cout << "Read in " << words.size() << " words\n";
 
-    map<WriterId, list<Word *> >::iterator writerIt;
-    map<FormId, list<Word *> >::iterator formIt;
-    list<Word *>::iterator testWord, trainWord;
-    list<Word *> formWords, writerWords;
+    map<FormId, list<Word> >::iterator trainForm;
+    map<FormId, list<Word> >::iterator testForm;
+    list<Word>::iterator testWord, trainWord;
+    list<Word> testWordList, trainWordList;
     map<WriterId, int> votes;
     Mat_<float> wordSim;
     float maxSim;
@@ -126,49 +155,63 @@ int main(int argc, char **argv)
     int maxVotes;
 
     // loop through the forms in the test data
-    for (formIt=testData.begin(); formIt != testData.end(); ++formIt) {
+    testForm=testData.begin();
+    while ( testForm != testData.end() ) {
 
-        formWords=formIt->second;
-        writer=formWords.front()->writer;
+        testWordList=testForm->second;
+        writer=testWordList.front().writer;
 
         votes.clear();
         maxVotes=0;
 
         // loop through words in the form
-        for (testWord=formWords.begin(); testWord != formWords.end(); ++testWord) {
+        testWord=testWordList.begin();
+        while ( testWord != testWordList.end() ) {
 
             maxSim=0.0f;
 
             // loop through writers in the train data
-            for (writerIt=trainData.begin(); writerIt != trainData.end(); ++writerIt) {
+            trainForm=trainData.begin();
+            while ( trainForm != trainData.end() ) {
                 
-                writerWords=writerIt->second;
+                trainWordList=trainForm->second;
                 
                 // loop through words in the writer
-                for (trainWord=writerWords.begin(); trainWord != writerWords.end(); ++trainWord) {
-                    matchTemplate((*testWord)->features, (*trainWord)->features, wordSim, CV_TM_CCORR_NORMED);
+                trainWord=trainWordList.begin();
+                while ( trainWord != trainWordList.end() ) {
+                    matchTemplate(testWord->features, trainWord->features, wordSim, CV_TM_CCORR_NORMED);
                     if (wordSim.at<float>(0,0) > maxSim) {
                         maxSim=wordSim.at<float>(0, 0);
-                        guess=(*trainWord)->writer;
+                        guess=trainWord->writer;
                     }
+                    trainWord++;
                 }
+                trainForm++;
             }
 
-            totalWord++;
-            if (guess == (*testWord)->writer)
-                correctWord++;
+            if (maxSim > epsilonMin) {
+                totalWord++;
+                if (guess == testWord->writer)
+                    correctWord++;
 
-            cout << "Word " << totalWord << ", " << 100*((float)correctWord/totalWord) << "% accuracy on word writer, "
-                << (*testWord)->writer << " => " << guess << ", " << "with similarity " << maxSim << "\n";
+                cout << "Word " << totalWord << ", " 
+                    << 100*((float)correctWord/totalWord) 
+                    << "% accuracy on word writer, "
+                    << testWord->writer << " => " << guess << ", " 
+                    << "with similarity " << maxSim << "\n";
 
-            votes[guess]++;
-            if (votes[guess] > maxVotes) {
-                maxVotes=votes[guess];
-                bestGuess=guess;
+                votes[guess]++;
+                if (votes[guess] > maxVotes) {
+                    maxVotes=votes[guess];
+                    bestGuess=guess;
+                }
+                testWord++;
             }
         }
 
         if (bestGuess == writer) correctForm++;
+
+        testForm++;
     }
 
     cout << 100*((float)correctForm/testData.size()) << "% accuracy on form writer.\n";
