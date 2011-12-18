@@ -5,7 +5,6 @@
 #include <cassert>
 #include <list>
 #include <map>
-#include <set>
 
 #include "HWRecognition.h"
 
@@ -16,8 +15,8 @@ size_t getOptimalDCTSize(size_t N) { return 2*getOptimalDFTSize((N+1)/2); }
 
 int main(int argc, char **argv)
 {
-    if (argc != 6) {
-        cerr << "usage: " << argv[0] << " <dataDir>\n";
+    if (argc != 7) {
+        cerr << "usage: " << argv[0] << " <dataDir> <transformScale> <featureHeight> <featureWidth> <perWriter> <testCount>\n";
         return 0;
     }
 
@@ -28,6 +27,7 @@ int main(int argc, char **argv)
     int transformScale=atoi(argv[2]);
     int featureHeight=atoi(argv[3]), featureWidth=atoi(argv[4]);
     int perWriter=atoi(argv[5]);
+    int testCount=atoi(argv[6]);
     int transformRows, transformCols;
     int lineNum, wordNum;
 
@@ -40,8 +40,9 @@ int main(int argc, char **argv)
 
     map <WriterId, list<Word *> > trainData;
     map <FormId, list<Word *> >  testData;
+    map <WriterId, list<FormId> > writerSet;
     map <WriterId, int> formCounts;
-    set <FormId> formSet;
+    map <FormId, WriterId> formSet;
     list<Word> words;
 
     if (!indexFile.good()) {
@@ -86,22 +87,24 @@ int main(int argc, char **argv)
                 Word record(imFilename, text, features.clone(), writer, form, lineNum, wordNum);
                 words.push_back(record);
 
+                // record new writer
+                if (!writerSet.count(writer)) writerSet[writer];
+
                 // record and count new form
                 if (!formSet.count(form)) {
-                    formSet.insert(form);
-                    formCounts[writer]++;
-                }
-
-                // perform separation of training and testing data
-                if (trainData.count(writer)) {
-                    if (testData.count(form)) {
-                        testData[form].push_back(&words.back());
-                    } else {
-                        trainData[writer].push_back(&words.back());
+                    if (formCounts[writer] < testCount) {
+                        testData[form];
                     }
-                } else {
+                    writerSet[writer].push_back(form);
+                    formSet[form]=writer;
+                    formCounts[writer]++;
+                } 
+                
+                // split into training and testing data
+                if (testData.count(form)) {
                     testData[form].push_back(&words.back());
-                    trainData[writer];
+                } else {
+                    trainData[writer].push_back(&words.back());
                 }
             }
         }
@@ -155,7 +158,7 @@ int main(int argc, char **argv)
             if (guess == (*testWord)->writer)
                 correctWord++;
 
-            cout << "Word " << totalWord << ", " << 100*((float)correctWord/totalWord) << "% success, "
+            cout << "Word " << totalWord << ", " << 100*((float)correctWord/totalWord) << "% accuracy on word writer, "
                 << (*testWord)->writer << " => " << guess << ", " << "with similarity " << maxSim << "\n";
 
             votes[guess]++;
@@ -168,7 +171,7 @@ int main(int argc, char **argv)
         if (bestGuess == writer) correctForm++;
     }
 
-    cout << 100*((float)correctForm/testData.size()) << "% accuracy on writing sample author.\n";
+    cout << 100*((float)correctForm/testData.size()) << "% accuracy on form writer.\n";
 
     return 0;
 }

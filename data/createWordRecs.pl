@@ -4,6 +4,7 @@ use strict;
 
 my(@line,%formCount,@wordRecords,%formSet);
 my($writer,$form,$line,$word,$file,$text);
+my $least=int(shift @ARGV) || die "usage: $0 <least forms>";
 
 open FORMS, 'forms.txt';
 
@@ -25,7 +26,7 @@ while (<WORDS>) {
         @line=split /\s+/;
         $form=$1;
         $writer=$formSet{$form};
-        if ($formCount{$writer} >= 10) {
+        if ($formCount{$writer} >= $least) {
             $line=$3;
             $word=$4;
             $file="$2/$form/$&.png";
