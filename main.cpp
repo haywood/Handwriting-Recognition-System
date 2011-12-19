@@ -69,7 +69,6 @@ int main(int argc, char **argv)
     Mat_ <float> trainMean(featureHeight*featureWidth, 1);
     ifstream indexFile(indexFilename.c_str());
 
-    Size transformSize(transformScale, transformScale);
     WriterId writer;
     FormId form;
 
@@ -107,9 +106,8 @@ int main(int argc, char **argv)
                 img=255-img;
 
                 // pad image for DCT
-                transformRows=getOptimalDCTSize(img.rows);
-                transformCols=getOptimalDCTSize(img.cols);
-
+                transformRows=getOptimalDCTSize(max(img.rows, transformScale));
+                transformCols=getOptimalDCTSize(max(img.cols, transformScale));
                 copyMakeBorder(img, padded, 0, transformRows - img.rows, 0, transformCols - img.cols, BORDER_CONSTANT, Scalar::all(0));
 
                 // scale intensities to the non-negative unit interval
@@ -118,9 +116,10 @@ int main(int argc, char **argv)
                 dct(scaledImg, transform); // perform DCT
 
                 // rescale transform size to be uniform and then truncate to throw out high frequencies
-                resize(transform, features, transformSize, 0, 0, INTER_LANCZOS4);
-                features=features.rowRange(0, featureHeight).colRange(0, featureWidth);
-                normalize(features, features, 0.0, 1.0, NORM_MINMAX);
+                features=transform.rowRange(0, featureHeight).colRange(0, featureWidth);
+
+                // scale into the interval [-1, 1]
+                normalize(features, features, -1.0, 1.0, NORM_MINMAX);
 
                 // create Word struct and save it
                 Word record(imFilename, text, features.clone().reshape(0, featureHeight*featureWidth), writer, form, lineNum, wordNum);
