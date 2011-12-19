@@ -63,6 +63,7 @@ int main(int argc, char **argv)
     }
 
     Mat img, padded, transform, features;
+    Mat_<float> scaledImg;
     ifstream indexFile(indexFilename.c_str());
 
     Size transformSize(transformScale, transformScale);
@@ -92,12 +93,15 @@ int main(int argc, char **argv)
         if (forms.count(form) || writerToForm[writer].size() < perWriter) {
 
             imFilename=wordsDir+imFilename;
-            img=255-imread(imFilename, CV_LOAD_IMAGE_GRAYSCALE);
+            img=imread(imFilename, CV_LOAD_IMAGE_GRAYSCALE);
             if (img.empty()) {
 
                 cerr << "unable to read image from file: " << imFilename << "\n";
 
             } else {
+
+                // binarize the image using Otsu's Method
+                threshold(img, img, 0.0, 1.0f, THRESH_OTSU);
 
                 // pad image for DCT
                 transformRows=getOptimalDCTSize(img.rows);
@@ -106,13 +110,14 @@ int main(int argc, char **argv)
                 copyMakeBorder(img, padded, 0, transformRows - img.rows, 0, transformCols - img.cols, BORDER_CONSTANT, Scalar::all(0));
 
                 // scale intensities to the non-negative unit interval
-                Mat_<float> wordImg((1.0f/255)*padded);
+                normalize(padded, scaledImg, 0, 1.0, NORM_MINMAX, scaledImg.type());
 
-                dct(wordImg, transform); // perform DCT
+                dct(scaledImg, transform); // perform DCT
 
                 // rescale transform size to be uniform and then truncate to throw out high frequencies
                 resize(transform, features, transformSize, 0, 0, INTER_LANCZOS4);
                 features=features.rowRange(0, featureHeight).colRange(0, featureWidth);
+                normalize(features, features, 0.0, 1.0, NORM_MINMAX);
 
                 // create Word struct and save it
                 Word record(imFilename, text, features.clone(), writer, form, lineNum, wordNum);
@@ -143,6 +148,12 @@ int main(int argc, char **argv)
         }
     }
 
+    img.release();
+    padded.release();
+    scaledImg.release();
+    transform.release();
+    features.release();
+
     // complete averaging of form representatives
     map<FormId, Mat_<float> >::iterator formIt=formFeatures.begin();
     while ( formIt != formFeatures.end() ) {
@@ -162,6 +173,7 @@ int main(int argc, char **argv)
     WriterId guess, bestGuess;
     int correctForm=0;
     int correctWord=0; 
+    int totalForm=0;
     int totalWord=0;
     int maxVotes;
 
@@ -217,11 +229,13 @@ int main(int argc, char **argv)
                 if (guess == testWord->writer)
                     correctWord++;
 
-                cout << "Word " << totalWord << ", " 
+                /*
+                cout << "\t" << "Word " << totalWord << ", " 
                     << 100*((float)correctWord/totalWord) 
                     << "% accuracy on word writer, "
                     << testWord->writer << " => " << guess << ", " 
                     << "with similarity " << maxSim << "\n";
+                 */
 
                 votes[guess]++;
                 if (votes[guess] > maxVotes) {
@@ -235,11 +249,15 @@ int main(int argc, char **argv)
         }
 
         if (bestGuess == writer) correctForm++;
+        totalForm++;
+
+        cout << "Form " << totalForm << ", "
+            << 100*((float)correctForm/totalForm) 
+            << "% accuracy on form writer, "
+            << writer << " => " << bestGuess << "\n";
 
         testForm++;
     }
-
-    cout << 100*((float)correctForm/testData.size()) << "% accuracy on form writer.\n";
 
     return 0;
 }
