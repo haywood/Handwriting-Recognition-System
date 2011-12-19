@@ -7,10 +7,10 @@ LFLAGS=-L$(ROOT)/opencv2/lib -lopencv_core -lopencv_highgui
 TRGS=HWClassifier
 OBJS=main.o
 
-HWClassifier: $(OBJS)
+HWClassifier: $(OBJS) HWRecognition.h
 	$(CC) -o $@ $(OBJS) $(CFLAGS) $(LFLAGS)
 
-main.o: main.cpp
+main.o: main.cpp HWRecognition.h
 	$(CC) -c $< $(CFLAGS)
 
 clean:

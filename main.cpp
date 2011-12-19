@@ -34,7 +34,6 @@ int main(int argc, char **argv)
     int testCount=strtol(argv[6], NULL, 10);
     float epsilonMin=strtof(argv[7], NULL);
 
-    double otsuThreshold;
     int transformRows, transformCols;
     int lineNum, wordNum;
     int wordCount=0;
@@ -64,7 +63,10 @@ int main(int argc, char **argv)
     }
 
     Mat img, padded, transform, features;
-    Mat_<float> scaledImg;
+    Mat_ <float> scaledImg;
+    Mat_ <double> trainCovar(featureHeight*featureWidth, featureHeight*featureWidth);
+    Mat_ <double> iTrainCovar(trainCovar.size());
+    Mat_ <float> trainMean(featureHeight*featureWidth, 1);
     ifstream indexFile(indexFilename.c_str());
 
     Size transformSize(transformScale, transformScale);
@@ -73,7 +75,7 @@ int main(int argc, char **argv)
 
     map <WriterId, list<FormId> > writerToForm;
 
-    map <FormId, Mat_<float> > formFeatures;
+    vector <Mat_<float> > trainFeatures;
     map <FormId, list <Word> > forms;
     set <FormId> trainData;
     set <FormId>  testData;
@@ -94,16 +96,15 @@ int main(int argc, char **argv)
         if (forms.count(form) || writerToForm[writer].size() < perWriter) {
 
             imFilename=wordsDir+imFilename;
-            img=255-imread(imFilename, CV_LOAD_IMAGE_GRAYSCALE);
+            img=imread(imFilename, CV_LOAD_IMAGE_GRAYSCALE);
             if (img.empty()) {
 
                 cerr << "unable to read image from file: " << imFilename << "\n";
 
             } else {
 
-                // threshold the image using Otsu's Method
-                //otsuThreshold=threshold(img, padded, 0.0, 1.0, THRESH_OTSU);
-                //threshold(img, img, otsuThreshold, 1.0, THRESH_TOZERO);
+                // invert the image intensities
+                img=255-img;
 
                 // pad image for DCT
                 transformRows=getOptimalDCTSize(img.rows);
@@ -122,7 +123,7 @@ int main(int argc, char **argv)
                 normalize(features, features, 0.0, 1.0, NORM_MINMAX);
 
                 // create Word struct and save it
-                Word record(imFilename, text, features.clone(), writer, form, lineNum, wordNum);
+                Word record(imFilename, text, features.clone().reshape(0, featureHeight*featureWidth), writer, form, lineNum, wordNum);
                 wordCount++;
 
                 // record new writer
@@ -135,13 +136,13 @@ int main(int argc, char **argv)
                     if (writerToForm[writer].size() < testCount)
                         testData.insert(form);
 
-                    else trainData.insert(form);
+                    else {
+                        trainFeatures.push_back(record.features);
+                        trainData.insert(form);
+                    }
 
                     writerToForm[writer].push_back(form);
-                    formFeatures[form]=features.clone();
 
-                } else {
-                    formFeatures[form]+=features;
                 }
 
                 forms[form].push_back(record);
@@ -156,12 +157,8 @@ int main(int argc, char **argv)
     transform.release();
     features.release();
 
-    // complete averaging of form representatives
-    map<FormId, Mat_<float> >::iterator formIt=formFeatures.begin();
-    while ( formIt != formFeatures.end() ) {
-        formFeatures[formIt->first]/=forms[formIt->first].size();
-        formIt++;
-    }
+    calcCovarMatrix(&trainFeatures[0], trainFeatures.size(), trainCovar, trainMean, CV_COVAR_NORMAL);
+    invert(trainCovar, iTrainCovar, DECOMP_SVD);
 
     cout << "Read in " << wordCount << " words\n";
 
@@ -170,8 +167,7 @@ int main(int argc, char **argv)
     list <Word>::iterator testWord, trainWord;
     list <Word> testWordList, trainWordList;
     map <WriterId, int> votes;
-    Mat_ <float> wordSim;
-    float maxSim;
+    float maxSim, wordSim;
     WriterId guess, bestGuess;
     int correctForm=0;
     int correctWord=0; 
@@ -189,18 +185,6 @@ int main(int argc, char **argv)
         votes.clear();
         maxVotes=0;
 
-        /*
-        trainForm=trainData.begin();
-        while ( trainForm != trainData.end() ) {
-            matchTemplate(formFeatures[*testForm], formFeatures[*trainForm], wordSim, CV_TM_CCORR_NORMED);
-            if (wordSim.at<float>(0,0) > maxSim) {
-                maxSim=wordSim.at<float>(0,0);
-                bestGuess=forms[*trainForm].front().writer;
-            }
-            trainForm++;
-        }
-        */
-
         // loop through words in the form
         testWord=testWordList.begin();
         while ( testWord != testWordList.end() ) {
@@ -216,28 +200,27 @@ int main(int argc, char **argv)
                 // loop through words in the writer
                 trainWord=trainWordList.begin();
                 while ( trainWord != trainWordList.end() ) {
-                    matchTemplate(testWord->features, trainWord->features, wordSim, CV_TM_CCORR_NORMED);
-                    if (wordSim.at<float>(0,0) > maxSim) {
-                        maxSim=wordSim.at<float>(0,0);
+
+                    wordSim=(*testWord) * (*trainWord); // calculate similarity between Words
+                    if (wordSim > maxSim) {
                         guess=trainWord->writer;
+                        maxSim=wordSim;
                     }
                     trainWord++;
                 }
                 trainForm++;
             }
 
-            if (maxSim > epsilonMin) {
+            if (maxSim >= epsilonMin) {
                 totalWord++;
                 if (guess == testWord->writer)
                     correctWord++;
 
-                /*
                 cout << "\t" << "Word " << totalWord << ", " 
                     << 100*((float)correctWord/totalWord) 
                     << "% accuracy on word writer, "
                     << testWord->writer << " => " << guess << ", " 
                     << "with similarity " << maxSim << "\n";
-                 */
 
                 votes[guess]++;
                 if (votes[guess] > maxVotes) {
