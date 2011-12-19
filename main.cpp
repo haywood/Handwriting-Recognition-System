@@ -34,6 +34,7 @@ int main(int argc, char **argv)
     int testCount=strtol(argv[6], NULL, 10);
     float epsilonMin=strtof(argv[7], NULL);
 
+    double otsuThreshold;
     int transformRows, transformCols;
     int lineNum, wordNum;
     int wordCount=0;
@@ -93,15 +94,16 @@ int main(int argc, char **argv)
         if (forms.count(form) || writerToForm[writer].size() < perWriter) {
 
             imFilename=wordsDir+imFilename;
-            img=imread(imFilename, CV_LOAD_IMAGE_GRAYSCALE);
+            img=255-imread(imFilename, CV_LOAD_IMAGE_GRAYSCALE);
             if (img.empty()) {
 
                 cerr << "unable to read image from file: " << imFilename << "\n";
 
             } else {
 
-                // binarize the image using Otsu's Method
-                threshold(img, img, 0.0, 1.0f, THRESH_OTSU);
+                // threshold the image using Otsu's Method
+                //otsuThreshold=threshold(img, padded, 0.0, 1.0, THRESH_OTSU);
+                //threshold(img, img, otsuThreshold, 1.0, THRESH_TOZERO);
 
                 // pad image for DCT
                 transformRows=getOptimalDCTSize(img.rows);
