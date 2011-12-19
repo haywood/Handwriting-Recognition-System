@@ -5,6 +5,7 @@
 #include <cassert>
 #include <list>
 #include <map>
+#include <set>
 
 #include "HWRecognition.h"
 
@@ -68,12 +69,12 @@ int main(int argc, char **argv)
     WriterId writer;
     FormId form;
 
-    map <FormId, list<Word> > trainData;
-    map <FormId, list<Word> >  testData;
-    map <WriterId, list<FormId> > writerSet;
-    map <WriterId, int> formCounts;
-    map <FormId, WriterId> formSet;
+    map <WriterId, list<FormId> > writerToForm;
+
     map <FormId, Mat_<float> > formFeatures;
+    map <FormId, list <Word> > forms;
+    set <FormId> trainData;
+    set <FormId>  testData;
 
     if (!indexFile.good()) {
         cerr << " error opening file: " << indexFilename << "\n";
@@ -88,7 +89,7 @@ int main(int argc, char **argv)
         indexFile >> imFilename;
         indexFile >> text;
 
-        if (formSet.count(form) || formCounts[writer] < perWriter) {
+        if (forms.count(form) || writerToForm[writer].size() < perWriter) {
 
             imFilename=wordsDir+imFilename;
             img=255-imread(imFilename, CV_LOAD_IMAGE_GRAYSCALE);
@@ -116,42 +117,47 @@ int main(int argc, char **argv)
                 // create Word struct and save it
                 Word record(imFilename, text, features.clone(), writer, form, lineNum, wordNum);
                 wordCount++;
+
                 // record new writer
-                if (!writerSet.count(writer)) writerSet[writer];
+                if (!writerToForm.count(writer)) writerToForm[writer];
 
                 // record and count new form
-                if (!formSet.count(form)) {
-                    if (formCounts[writer] < testCount) {
-                        testData[form];
-                    }
+                if (!forms.count(form)) {
+
+                    // split into train and test data
+                    if (writerToForm[writer].size() < testCount)
+                        testData.insert(form);
+
+                    else trainData.insert(form);
+
+                    writerToForm[writer].push_back(form);
                     formFeatures[form]=features.clone();
-                    writerSet[writer].push_back(form);
-                    formSet[form]=writer;
-                    formCounts[writer]++;
+
                 } else {
                     formFeatures[form]+=features;
                 }
-                
-                // split into training and testing data
-                if (testData.count(form)) {
-                    testData[form].push_back(record);
-                } else {
-                    trainData[form].push_back(record);
-                }
+
+                forms[form].push_back(record);
+
             }
         }
     }
 
+    // complete averaging of form representatives
     map<FormId, Mat_<float> >::iterator formIt=formFeatures.begin();
+    while ( formIt != formFeatures.end() ) {
+        formFeatures[formIt->first]/=forms[formIt->first].size();
+        formIt++;
+    }
 
     cout << "Read in " << wordCount << " words\n";
 
-    map<FormId, list<Word> >::iterator trainForm;
-    map<FormId, list<Word> >::iterator testForm;
-    list<Word>::iterator testWord, trainWord;
-    list<Word> testWordList, trainWordList;
-    map<WriterId, int> votes;
-    Mat_<float> wordSim;
+    set <FormId>::iterator trainForm;
+    set <FormId>::iterator testForm;
+    list <Word>::iterator testWord, trainWord;
+    list <Word> testWordList, trainWordList;
+    map <WriterId, int> votes;
+    Mat_ <float> wordSim;
     float maxSim;
     WriterId guess, bestGuess;
     int correctForm=0;
@@ -163,11 +169,23 @@ int main(int argc, char **argv)
     testForm=testData.begin();
     while ( testForm != testData.end() ) {
 
-        testWordList=testForm->second;
+        testWordList=forms[*testForm];
         writer=testWordList.front().writer;
 
         votes.clear();
         maxVotes=0;
+
+        /*
+        trainForm=trainData.begin();
+        while ( trainForm != trainData.end() ) {
+            matchTemplate(formFeatures[*testForm], formFeatures[*trainForm], wordSim, CV_TM_CCORR_NORMED);
+            if (wordSim.at<float>(0,0) > maxSim) {
+                maxSim=wordSim.at<float>(0,0);
+                bestGuess=forms[*trainForm].front().writer;
+            }
+            trainForm++;
+        }
+        */
 
         // loop through words in the form
         testWord=testWordList.begin();
@@ -179,14 +197,14 @@ int main(int argc, char **argv)
             trainForm=trainData.begin();
             while ( trainForm != trainData.end() ) {
                 
-                trainWordList=trainForm->second;
+                trainWordList=forms[*trainForm];
                 
                 // loop through words in the writer
                 trainWord=trainWordList.begin();
                 while ( trainWord != trainWordList.end() ) {
                     matchTemplate(testWord->features, trainWord->features, wordSim, CV_TM_CCORR_NORMED);
                     if (wordSim.at<float>(0,0) > maxSim) {
-                        maxSim=wordSim.at<float>(0, 0);
+                        maxSim=wordSim.at<float>(0,0);
                         guess=trainWord->writer;
                     }
                     trainWord++;
