@@ -164,6 +164,8 @@ int main(int argc, char **argv)
     set <FormId>::iterator trainForm;
     set <FormId>::iterator testForm;
     list <Word>::iterator testWord, trainWord;
+    map <WriterId, int>::iterator voteIt;
+
     list <Word> testWordList, trainWordList;
     map <WriterId, int> votes;
     float maxSim, wordSim;
@@ -240,6 +242,13 @@ int main(int argc, char **argv)
             << "% accuracy on form writer, "
             << writer << " => " << bestGuess << "\n";
 
+        voteIt=votes.begin();
+        cout << "\t" << "Votes: ";
+        while (voteIt != votes.end()) {
+            cout << voteIt->first << ": " << voteIt->second << ", ";
+            voteIt++;
+        }
+        cout << "\n";
         testForm++;
     }
 
