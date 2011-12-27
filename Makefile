@@ -1,8 +1,6 @@
-ROOT=/home/mhr2126/HWRecognition
-
 CC=g++
-CFLAGS=-g3 -O0 -Wall -I$(ROOT)/opencv2/include
-LFLAGS=-L$(ROOT)/opencv2/lib -lopencv_core -lopencv_highgui
+CFLAGS=-g3 -O0 -Wall
+LFLAGS=-lopencv_core -lopencv_imgproc -lopencv_highgui
 
 TRGS=HWClassifier
 OBJS=main.o
