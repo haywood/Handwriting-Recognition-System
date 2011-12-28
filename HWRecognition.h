@@ -1,7 +1,10 @@
+#ifndef HW_RECOG_H_
+#define HW_RECOG_H_
+
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <string>
 #include <iostream>
+#include <string>
 
 typedef int WriterId;
 typedef std::string FormId;
@@ -26,7 +29,7 @@ struct Word {
         wordNum(wordNum)
         { featureNorm=cv::norm(features); }
 
-    inline Word(const Word &w): 
+    inline explicit Word(const Word &w): 
         filename(w.filename), 
         text(w.text), 
         features(w.features), 
@@ -57,3 +60,5 @@ inline float operator * (const Word &word1, const Word &word2)
 {
     return sum(word1.features.mul(word2.features))[0]/(word1.featureNorm*word2.featureNorm);
 }
+
+#endif /* HW_RECOG_H_ */

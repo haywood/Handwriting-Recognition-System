@@ -1,6 +1,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
+#include <sstream>
 #include <fstream>
 #include <cassert>
 #include <list>
@@ -25,6 +26,7 @@ int main(int argc, char **argv)
 
     string dataDir(argv[1]), wordsDir=dataDir+"/words/"; 
     string indexFilename=dataDir+"/wordswithwriters.txt"; 
+    stringstream formResults, wordResults;
     string imFilename, text;
 
     int transformScale=strtol(argv[2], NULL, 10);
@@ -170,8 +172,10 @@ int main(int argc, char **argv)
     map <WriterId, int> votes;
     float maxSim, wordSim;
     WriterId guess, bestGuess;
+    string textGuess;
     int correctForm=0;
     int correctWord=0; 
+    int correctText=0;
     int totalForm=0;
     int totalWord=0;
     int maxVotes;
@@ -205,6 +209,7 @@ int main(int argc, char **argv)
                     wordSim=(*testWord) * (*trainWord); // calculate similarity between Words
                     if (wordSim > maxSim) {
                         guess=trainWord->writer;
+                        textGuess=trainWord->text;
                         maxSim=wordSim;
                     }
                     trainWord++;
@@ -212,22 +217,25 @@ int main(int argc, char **argv)
                 trainForm++;
             }
 
-            if (maxSim >= epsilonMin) {
-                totalWord++;
-                if (guess == testWord->writer)
-                    correctWord++;
+            totalWord++;
+            if (guess == testWord->writer)
+                correctWord++;
+            if (textGuess == testWord->text)
+                correctText++;
 
-                cout << "\t" << "Word " << totalWord << ", " 
-                    << 100*((float)correctWord/totalWord) 
-                    << "% accuracy on word writer, "
-                    << testWord->writer << " => " << guess << ", " 
-                    << "with similarity " << maxSim << "\n";
+            wordResults << "Word " << totalWord << ", " 
+                << 100*((float)correctWord/totalWord) 
+                << "% accuracy on word writer, "
+                << 100*((float)correctText/totalWord)
+                << "% accuracy on word text,"
+                << "(" << testWord->text << ", " << testWord->writer 
+                << ") => (" << textGuess << ", " << guess << "), " 
+                << "with similarity " << maxSim << "\n";
 
-                votes[guess]++;
-                if (votes[guess] > maxVotes) {
-                    maxVotes=votes[guess];
-                    bestGuess=guess;
-                }
+            votes[guess]++;
+            if (votes[guess] > maxVotes) {
+                maxVotes=votes[guess];
+                bestGuess=guess;
             }
 
             testWord++;
@@ -237,7 +245,8 @@ int main(int argc, char **argv)
         if (bestGuess == writer) correctForm++;
         totalForm++;
 
-        cout << "Form " << totalForm << ", "
+        formResults << "Form " << *testForm 
+            << "(" << forms[*testForm].size() << "), "
             << 100*((float)correctForm/totalForm) 
             << "% accuracy on form writer, "
             << writer << " => " << bestGuess << "\n";
@@ -245,12 +254,14 @@ int main(int argc, char **argv)
         voteIt=votes.begin();
         cout << "\t" << "Votes: ";
         while (voteIt != votes.end()) {
-            cout << voteIt->first << ": " << voteIt->second << ", ";
-            voteIt++;
+            formResults << voteIt->first << ": " << voteIt->second;
+            if (++voteIt != votes.end()) formResults << ", ";
         }
-        cout << "\n";
+        formResults << "\n";
         testForm++;
     }
+
+    cout << wordResults.rdbuf() << "\n" << formResults.rdbuf();
 
     return 0;
 }
